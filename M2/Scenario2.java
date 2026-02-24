@@ -20,15 +20,25 @@ public class Scenario2 extends BaseClass {
         // Challenge 2: Have the sum (total) be represented as a number with exactly 2 decimal places (similar to currency), assign to `modifiedTotal` variable
         // Example: 0.1 would be shown as 0.10, 1 would be shown as 1.00, 0.011 as 0.01, etc
         // Step 1: sketch out plan using comments (include ucid and date)
-        // Step 2: Add/commit your outline of comments (required for full credit)
+        // Step 2: Add/commit your outline of comments (required for full credit)'
         // Step 3: Add code to solve the problem (add/commit as needed)
         double total = 0;
         // Start Solution Edits
+
+        // si329 02-23-2026
+        // The method we are immediately provided with takes in an array of doubles as well as a position(?), (literally number) of the array. 
+        // We are given a temporary total variable to store the total sum of the array. This is a simple iterative process. 
+        // We can first take the length of the array for challenge 1, then iterate through it and add it to the to the total variable.
+
+        // Challenge 2 requires the use of formatting. Java's build in String class has a method for this exact kind of formatting.
+
+
         // Solve Challenge 1 here
-       
-      
+        for (int i = 0; i < arr.length; i++) {
+            total = total + arr[i];
+        }
         // Solve Challenge 2 here
-        Object modifiedTotal = "?";
+        Object modifiedTotal = String.format("%.2f", total);
         
         // End Solution Edits
         printScenario2Output(total, modifiedTotal);
