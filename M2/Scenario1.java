@@ -18,14 +18,26 @@ public class Scenario1 extends BaseClass {
         // Step 2: Add/commit your outline of comments (required for full credit)
         // Step 3: Add code to solve the problem (add/commit as needed)
         // Start Solution Edits
-       
+
+        // si329 02-23-2026
+        // What we are attempting to achieve here is to basically iterate through the existing array. 
+        // Then, we need to output the odd numbers in the array that we have compiled into possibly its own separate array.
+        // The provided function takes in the array and stores the specific index of the array.
+
+        // A possible way of going about this is creating an array of odd numbers to check against. However, this is more tedious and unnecessarily so.
+        // We can instead use a modulus operator to check if the number is odd. If the number modulus of 2 is not equal to 0, we can inductively conclude that it is odd.
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] % 2 != 0) {
+                System.out.print(arr[i] + ", ");
+            }
+        }
 
         // End Solution Edits
         System.out.println("");
         System.out.println("______________________________________");
     }
     public static void main(String[] args) {
-        final String ucid = "mt85"; // <-- change to your UCID
+        final String ucid = "si329"; // <-- change to your UCID
         // no edits below this line
         printHeader(ucid, 1);
         printOdds(array1,1);

@@ -28,7 +28,7 @@ public class Scenario3 extends BaseClass {
     }
 
     public static void main(String[] args) {
-        final String ucid = "mt85"; // <-- change to your UCID
+        final String ucid = "si329"; // <-- change to your UCID
         // no edits below this line
         printHeader(ucid, 3);
         bePositive(array1, 1);
