@@ -21,7 +21,31 @@ public class Scenario3 extends BaseClass {
         // Step 3: Add code to solve the problem (add/commit as needed)
         Object[] output = new Object[arr.length];
         // Start Solution Edits
-        
+
+        // Like with the other problems, for the first challenge we simply have to iterate through the array and then perform an action to each of the constiutent parts of the array.
+        // A simple way to do this is to use the Math.abs() method for each number, and then spit it out into the output array.
+        // In order to populate the output array, we have to define its length as long as the inputted array, which is already done. 
+        // We then go through each index of the array and then set our variable value equal to it.
+
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] instanceof Integer) {
+                output[i] = Math.abs((Integer) arr[i]);
+            }
+            else if (arr[i] instanceof Double) {
+                output[i] = Math.abs((Double) arr[i]);
+            }
+            else if (arr[i] instanceof Float) {
+                output[i] = Math.abs((Float) arr[i]);
+            }
+            else if (arr[i] instanceof String)
+            {
+                // For this one, I'm a little lost. I don't know how to exactly go about it.
+                // This is a bit of a hacky fix that doesn't actually address the fact that some of the numbers are integers.
+                output[i] = Math.abs(Double.parseDouble((String) arr[i]));
+            }
+
+
+        }
 
         // End Solution Edits
         printOutputWithType(output, true);
