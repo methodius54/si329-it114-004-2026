@@ -37,7 +37,9 @@ public class Client {
         // but I feel as if the only other way to go about this would be to throw in an if statement in processCommand 
         // that checks to see if flip is passed. This is a cleaner solution.
         // I think this is what you were going for.
-        FLIP("/flip");
+        FLIP("/flip"),
+        // I did it again with PM. This just seems like a natural extension for me. Not sure though.
+        PM("/pm");
 
         private final String trigger;
 
@@ -133,13 +135,25 @@ public class Client {
                 String reverseText = text.replace("/reverse", "").trim();
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "reverse", reverseText));
                 return true;
+
+            // Past this point are edits made for the homeworks.
+            // UCID: si329 Date: 2026-03-30
             case FLIP:
                 // UCID: si329 Date: 2026-03-30
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "flip"));
                 return true;
-
-            default:
-                return false;
+            case PM:
+                            String[] pmParts = text.trim().split("\\s+", 3);
+            if (pmParts.length < 3) {
+                System.out.println("Invalid format. Use: /pm <target id> <message>");
+            } else {
+                String targetId = pmParts[1];
+                String pmMessage = pmParts[2];
+                sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "pm", targetId, pmMessage));
+            }
+            return true;
+        default:
+            return false;
         }
     }
 

@@ -163,9 +163,23 @@ public class ServerThread extends Thread {
             case "flip":
                 server.handleFlip(this);
                 return true;
+            case "pm":
+                if (commandData.length < 4) {
+                    sendToClient("Server: Invalid format. Use /pm <target id> <message>");
+                return true;
+            }
+            try {
+                long targetId = Long.parseLong(commandData[2].trim());
+                String pmMessage = String.join(",", Arrays.copyOfRange(commandData, 3, commandData.length));
+                server.handlePM(this, targetId, pmMessage);
+            } 
+            catch (NumberFormatException e) {
+                sendToClient("Server: Invalid target id for /pm");
+            }
             default:
                 return false;
         }
+            
     }
 
     private void cleanup() {

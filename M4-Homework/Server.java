@@ -110,6 +110,23 @@ public class Server {
 
         String message = String.format("User[%s] flipped a coin and got %s", sender.getClientId(), result);
     }
+    protected synchronized void handlePM(ServerThread sender, long targetId, String message) {
+    ServerThread target = connectedClients.get(targetId);
+
+    //Sanity check.
+    if (target == null) {
+        sender.sendToClient("Server: User[" + targetId + "] not found");
+        return;
+    }
+
+    String formatted = String.format("Server: PM from User[%s]: %s", sender.getClientId(), message);
+
+    sender.sendToClient(formatted);
+
+    if (target.getClientId() != sender.getClientId()) {
+        target.sendToClient(formatted);
+    }
+}
 
     public static void main(String[] args) {
         System.out.println("Server Starting");
