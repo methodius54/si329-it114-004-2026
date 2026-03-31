@@ -159,6 +159,10 @@ public class ServerThread extends Thread {
                 String relevantText = String.join(" ", Arrays.copyOfRange(commandData, 2, commandData.length));
                 server.handleReverseText(this, relevantText);
                 return true;
+            // si329 2026-03-30
+            case "flip":
+                server.handleFlip(this);
+                return true;
             default:
                 return false;
         }

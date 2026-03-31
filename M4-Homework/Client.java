@@ -32,7 +32,12 @@ public class Client {
         DISCONNECT("/disconnect"),
         QUIT("/quit"),
         USERS("/users"),
-        REVERSE("/reverse");
+        REVERSE("/reverse"),
+        // The assignment says that we're only allowed to edit enums, 
+        // but I feel as if the only other way to go about this would be to throw in an if statement in processCommand 
+        // that checks to see if flip is passed. This is a cleaner solution.
+        // I think this is what you were going for.
+        FLIP("/flip");
 
         private final String trigger;
 
@@ -128,6 +133,11 @@ public class Client {
                 String reverseText = text.replace("/reverse", "").trim();
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "reverse", reverseText));
                 return true;
+            case FLIP:
+                // UCID: si329 Date: 2026-03-30
+                sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "flip"));
+                return true;
+
             default:
                 return false;
         }

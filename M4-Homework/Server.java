@@ -98,6 +98,19 @@ public class Server {
         broadcast(sender, text);
     }
 
+    protected synchronized void handleFlip(ServerThread sender) {
+        String result;
+        if (Math.random() < 0.5) {
+            result = "heads";
+        }
+        else 
+        {
+            result = "tails";
+        }
+
+        String message = String.format("User[%s] flipped a coin and got %s", sender.getClientId(), result);
+    }
+
     public static void main(String[] args) {
         System.out.println("Server Starting");
         Server server = new Server();
