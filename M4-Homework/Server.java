@@ -5,7 +5,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Server {
+public enum Server {
+    INSTANCE;
     private int port = 3000;
     // thread-safe map; multiple ServerThreads may call Server methods concurrently
     private final ConcurrentHashMap<Long, ServerThread> connectedClients = new ConcurrentHashMap<>();
@@ -143,7 +144,7 @@ public class Server {
 
     public static void main(String[] args) {
         System.out.println("Server Starting");
-        Server server = new Server();
+        Server server = Server.INSTANCE;
         int port = 3000;
         try {
             port = Integer.parseInt(args[0]);
