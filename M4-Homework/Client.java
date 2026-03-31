@@ -39,7 +39,8 @@ public class Client {
         // I think this is what you were going for.
         FLIP("/flip"),
         // I did it again with PM. This just seems like a natural extension for me. Not sure though.
-        PM("/pm");
+        PM("/pm"),
+        SHUFFLE("/shuffle");
 
         private final String trigger;
 
@@ -143,16 +144,21 @@ public class Client {
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "flip"));
                 return true;
             case PM:
-                            String[] pmParts = text.trim().split("\\s+", 3);
+                String[] pmParts = text.trim().split("\\s+", 3);
             if (pmParts.length < 3) {
                 System.out.println("Invalid format. Use: /pm <target id> <message>");
-            } else {
+            } 
+            else {
                 String targetId = pmParts[1];
                 String pmMessage = pmParts[2];
                 sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "pm", targetId, pmMessage));
             }
             return true;
-        default:
+            case SHUFFLE:
+                String shuffletext = text.replace("/shuffle", "").trim();
+                sendToServer(String.join(",", Constants.COMMAND_TRIGGER, "shuffle", shuffleText));    
+                return true;    
+                default:
             return false;
         }
     }

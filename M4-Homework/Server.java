@@ -118,7 +118,6 @@ public class Server {
         sender.sendToClient("Server: User[" + targetId + "] not found");
         return;
     }
-
     String formatted = String.format("Server: PM from User[%s]: %s", sender.getClientId(), message);
 
     sender.sendToClient(formatted);
@@ -126,6 +125,20 @@ public class Server {
     if (target.getClientId() != sender.getClientId()) {
         target.sendToClient(formatted);
     }
+}
+    protected synchronized void handleShuffle(ServerThread sender, String text) {
+    char[] chars = text.toCharArray();
+
+    for (int i = 0; i < chars.length; i++) {
+        int randomIndex = (int) (Math.random() * chars.length);
+        char temp = chars[i];
+        chars[i] = chars[randomIndex];
+        chars[randomIndex] = temp;
+    }
+
+    String shuffled = new String(chars);
+    String message = String.format("Shuffled from User[%s]: %s", sender.getClientId(), shuffled);
+    broadcast(null, message);
 }
 
     public static void main(String[] args) {
