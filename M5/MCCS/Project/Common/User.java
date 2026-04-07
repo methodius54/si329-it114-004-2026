@@ -1,4 +1,4 @@
-package Project.MCCS.Part2.Common;
+package M5.MCCS.Project.Common;
 
 public class User {
     private long clientId = Constants.DEFAULT_CLIENT_ID;

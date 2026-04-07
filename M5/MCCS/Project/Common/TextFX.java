@@ -1,4 +1,4 @@
-package Project.MCCS.Part2.Common;
+package M5.MCCS.Project.Common;
 
 /**
  * Utility to attempt to provide colored text in the terminal.

@@ -1,13 +1,13 @@
-package Project.MCCS.Part2.Server;
+package M5.MCCS.Project.Server;
 
 import java.net.Socket;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import M5.MCCS.Part2.Common.ConnectionPayload;
-import M5.MCCS.Part2.Common.Constants;
-import M5.MCCS.Part2.Common.Payload;
-import M5.MCCS.Part2.Common.PayloadType;
+import M5.MCCS.Project.Common.ConnectionPayload;
+import M5.MCCS.Project.Common.Constants;
+import M5.MCCS.Project.Common.Payload;
+import M5.MCCS.Project.Common.PayloadType;
 
 /**
  * Server-side handler for one connected client.

@@ -1,4 +1,4 @@
-package Project.MCCS.Part2.Server;
+package M5.MCCS.Project.Server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import M5.MCCS.Part2.Common.TextFX;
-import M5.MCCS.Part2.Common.TextFX.Color;
+import M5.MCCS.Project.Common.TextFX;
+import M5.MCCS.Project.Common.TextFX.Color;
 
 public enum Server {
     INSTANCE; // Singleton instance

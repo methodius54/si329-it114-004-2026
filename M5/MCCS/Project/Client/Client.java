@@ -1,4 +1,4 @@
-package Project.MCCS.Part2.Client;
+package M5.MCCS.Project.Client;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -11,12 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import M5.MCCS.Part2.Common.ConnectionPayload;
-import M5.MCCS.Part2.Common.Payload;
-import M5.MCCS.Part2.Common.PayloadType;
-import M5.MCCS.Part2.Common.TextFX;
-import M5.MCCS.Part2.Common.TextFX.Color;
-import M5.MCCS.Part2.Common.User;
+import M5.MCCS.Project.Common.ConnectionPayload;
+import M5.MCCS.Project.Common.Payload;
+import M5.MCCS.Project.Common.PayloadType;
+import M5.MCCS.Project.Common.TextFX;
+import M5.MCCS.Project.Common.TextFX.Color;
+import M5.MCCS.Project.Common.User;
 
 /**
  * Multi-client chat client using ObjectInputStream/ObjectOutputStream.
