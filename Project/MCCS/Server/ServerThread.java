@@ -1,4 +1,4 @@
-package M5.MCCS.Part2.Server;
+package Project.MCCS.Part2.Server;
 
 import java.net.Socket;
 import java.util.Objects;

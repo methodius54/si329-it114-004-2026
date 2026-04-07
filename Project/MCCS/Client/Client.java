@@ -1,4 +1,4 @@
-package M5.MCCS.Part2.Client;
+package Project.MCCS.Part2.Client;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
