@@ -1,4 +1,4 @@
-package M5.MCCS.Part2.Common;
+package Project.MCCS.Part2.Common;
 
 import java.io.Serializable;
 

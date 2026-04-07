@@ -1,4 +1,4 @@
-package M5.MCCS.Part2.Common;
+package Project.MCCS.Part2.Common;
 
 public enum PayloadType {
     CLIENT_CONNECT, // client requesting to connect to server (passing of initialization data
