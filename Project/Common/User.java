@@ -5,7 +5,7 @@ public class User {
     private String clientName;
     private boolean ready;
     private boolean turnTaken;
-    private int guess = 0;// example user data
+    private String choice = null;
     private int points = 0;
 
     public User() {
@@ -37,18 +37,12 @@ public class User {
         this.points = points;
     }
 
-    /**
-     * @return the guess
-     */
-    public int getGuess() {
+    // I decided to replace guess with choice
+    public String getChoice(String choice) {
         return guess;
     }
-
-    /**
-     * @param guess the guess to set
-     */
-    public void setGuess(int guess) {
-        this.guess = guess;
+    public string setChoice(String choice) {
+        this.choice = choice;
     }
 
     /**

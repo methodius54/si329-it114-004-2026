@@ -82,13 +82,13 @@ public abstract class BaseServerThread extends Thread {
         this.user.setTurnTaken(turnTaken);
     }
 
-    // exposure of example user data
-    public int getGuess() {
-        return this.user.getGuess();
+    // Getter/setter for choice
+    public String getChoice() {
+        return this.user.getChoice();
     }
 
-    public void setGuess(int guess) {
-        this.user.setGuess(guess);
+    public void setChoice(String choice) {
+        this.user.setChoice(choice);
     }
 
     public int getPoints() {

@@ -13,7 +13,7 @@ public enum Command {
     READY("/ready"),
     TURN("/turn"),// @Deprecated
     VALIDATE_CLIENT("/togglecv"), // toggle client validation (for testing server-side validations)
-    GUESS("/guess"), // example game action command
+    CHOICE("/choice"), // example game action command
     ;
 
     private final String trigger;
