@@ -19,5 +19,5 @@ public enum PayloadType {
     PLAYER_READY_STATUS, // server syncs whether a user is ready
     PLAYER_TURN_STATUS, // server syncs whether a user already took a turn
     POINTS, // server syncs a user's points
-    GUESS, // Used by client to send guess and server to confirm guess was received
+    CHOICE, // Replaces the Guess functionality of the old code
 }

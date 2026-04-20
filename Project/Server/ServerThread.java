@@ -136,13 +136,21 @@ public class ServerThread extends BaseServerThread {
         return sendToClient(payload);
     }
 
-    protected boolean sendGuessConfirmation(int guess) {
-        // in this example the guess is a number, but since I want to keep the code
-        // changes minimal, I'll leverage PointsPayload to pass the confirmation back
-        // since it provides a slot for a number despite the name not making sense
-        PointsPayload payload = new PointsPayload();
+//    protected boolean sendGuessConfirmation(int guess) {
+//        // in this example the guess is a number, but since I want to keep the code
+//        // changes minimal, I'll leverage PointsPayload to pass the confirmation back
+//        // since it provides a slot for a number despite the name not making sense
+//        PointsPayload payload = new PointsPayload();
+//        payload.setPayloadType(PayloadType.GUESS);
+//        payload.setPoints(guess); // abusing the points field to send the guess back for confirmation
+//        return sendToClient(payload);
+//    }
+// I commented this out because the structure helps me understand what is happening here, exactly.
+
+    protected boolean sendChoiceConfirmation(String choice) {
+        Payload payload = new Payload();
         payload.setPayloadType(PayloadType.GUESS);
-        payload.setPoints(guess); // abusing the points field to send the guess back for confirmation
+        payload.setMessage(choice);
         return sendToClient(payload);
     }
 
