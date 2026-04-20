@@ -38,12 +38,8 @@ public class User {
     }
 
     // I decided to replace guess with choice
-    public String getChoice(String choice) {
-        return guess;
-    }
-    public string setChoice(String choice) {
-        this.choice = choice;
-    }
+    public String getChoice() { return choice; }
+    public void setChoice(String choice) { this.choice = choice; }
 
     /**
      * @param clientId the clientId to set

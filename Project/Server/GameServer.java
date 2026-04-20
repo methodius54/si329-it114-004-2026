@@ -184,10 +184,7 @@ public class GameServer extends BaseGameServer {
             //            String.format("%s guessed correctly and gained a point!", player.getDisplayName()));
                 // can reset guess here
             //    player.setGuess(0);
-            // This needs to be changed.
-            } else {
-                unicastGameMessage(player, "Your guess was incorrect.");
-            }
+            // This needs to be changed to work with RPS logic. 
         }
 
         LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");

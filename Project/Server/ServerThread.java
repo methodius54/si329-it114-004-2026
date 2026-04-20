@@ -70,8 +70,11 @@ public class ServerThread extends BaseServerThread {
             case TURN:
                 processTurn(incoming);
                 break;
-            case GUESS:
-                processGuess(incoming);
+            //case GUESS:
+            //    processGuess(incoming);
+            //    break;
+            case CHOICE:
+                processChoice(incoming);
                 break;
             default:
                 info("Received unsupported payload type: " + incoming.getPayloadType());
@@ -80,9 +83,14 @@ public class ServerThread extends BaseServerThread {
 
     // Region used to hand off data to Server methods for processing
     // Start region for process*() methods ===================================
-    private void processGuess(Payload incoming) {
-        info("Processing guess payload");
-        Server.INSTANCE.handleGuess(this, incoming.getMessage());
+    // private void processGuess(Payload incoming) {
+    //    info("Processing guess payload");
+    //    Server.INSTANCE.handleGuess(this, incoming.getMessage());
+    // }
+
+    private void processChoice(Payload incoming) {
+        info("Processing choice payload");
+        Server.INSTANCE.handleChoice(this, incoming.getMessage());
     }
 
     private void processTurn(Payload incoming) {
@@ -149,7 +157,7 @@ public class ServerThread extends BaseServerThread {
 
     protected boolean sendChoiceConfirmation(String choice) {
         Payload payload = new Payload();
-        payload.setPayloadType(PayloadType.GUESS);
+        payload.setPayloadType(PayloadType.CHOICE);
         payload.setMessage(choice);
         return sendToClient(payload);
     }

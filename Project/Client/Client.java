@@ -147,7 +147,7 @@ public enum Client {
                         c.isTurnTaken() ? "[x]" : "[ ]",
                         c.getPoints(),
                 //        c.getGuess() == 0 ? "[?]" : c.getGuess())));
-                        c.getGuess() == null ? "[?]" : c.getChoice()
+                c.getChoice() == null ? "[?]" : c.getChoice())));
                 LoggerUtil.INSTANCE.info(TextFX.colorize(sb.toString().trim(), Color.CYAN));
                 return true;
             case REVERSE:
@@ -182,9 +182,9 @@ public enum Client {
                         Color.GREEN));
                 return true;
             // example game action
-            case GUESS:
-                String guessText = text.replaceFirst("/guess", "").trim();
-                sendGuess(guessText);
+            case CHOICE:
+                String choiceText = text.replaceFirst("/choice", "").trim();
+                sendChoice(choiceText);
                 return true;
             default:
                 return false;
@@ -215,7 +215,7 @@ public enum Client {
         }
 
         Payload payload = new Payload();
-        payload.setPayloadType(PayloadType.GUESS);
+        payload.setPayloadType(PayloadType.CHOICE);
         payload.setMessage(validatedTurnAction);
         sendToServer(payload);
     }

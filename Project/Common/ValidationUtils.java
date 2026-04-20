@@ -163,5 +163,6 @@ public final class ValidationUtils {
         if (!normalized.equals("rock") && !normalized.equals("paper") && !normalized.equals("scissors")) {
             throw new InvalidTurnOptionException("Please enter rock, paper, or scissors (or r/p/s).");
         }
+    return normalized;
     }
 }

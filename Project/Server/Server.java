@@ -81,15 +81,15 @@ public enum Server {
     }
 
     // start region for handle*() methods ===================================
-
-    protected synchronized void handleGuess(ServerThread sender, String guess) {
+    
+    protected synchronized void handleChoice(ServerThread sender, String choice) {
         if (!isGameServerActive()) {
             return;
         }
         try {
-            gameServer.handleGuess(sender, guess);
+            gameServer.handleChoice(sender, choice);
         } catch (Exception e) {
-            LoggerUtil.INSTANCE.severe("Game server handleGuess failed", e);
+            LoggerUtil.INSTANCE.severe("Game server handleChoice failed", e);
         }
     }
 
