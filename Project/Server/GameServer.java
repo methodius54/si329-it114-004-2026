@@ -175,15 +175,16 @@ public class GameServer extends BaseGameServer {
         broadcastGameMessage("Evaluating guesses... The correct number was " + hiddenNumber);
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
         for (ServerThread player : snapshot) {
-            if (player.getGuess() == hiddenNumber) {
-                player.setPoints(player.getPoints() + 1);
+            // if (player.getGuess() == hiddenNumber) {
+            //    player.setPoints(player.getPoints() + 1);
                 // sync points to all
-                broadcastPlayerPoints(player);
-                // feedback
-                broadcastGameMessage(
-                        String.format("%s guessed correctly and gained a point!", player.getDisplayName()));
+            //    broadcastPlayerPoints(player);
+            //    // feedback
+            //    broadcastGameMessage(
+            //            String.format("%s guessed correctly and gained a point!", player.getDisplayName()));
                 // can reset guess here
-                player.setGuess(0);
+            //    player.setGuess(0);
+            // This needs to be changed.
             } else {
                 unicastGameMessage(player, "Your guess was incorrect.");
             }
@@ -299,29 +300,28 @@ public class GameServer extends BaseGameServer {
 
     // start region for handle*() methods called by Server
 
-    protected void handleGuess(ServerThread sender, String guess) {
+    protected void handleChoice(ServerThread sender, String choice) {
         try {
-            ValidationUtils.requireParticipating(isActivePlayer(sender));
-            ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
-            guess = ValidationUtils.requireValidTurnOption(guess.trim());
+            // ValidationUtils.requireParticipating(isActivePlayer(sender));
+            // ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
+            // guess = ValidationUtils.requireValidTurnOption(guess.trim());
             // although validation should verify it's a number, I'll see do a try/catch just
             // in case
             // that way if I mistakenly change requireValidTurnOption() in the future and it
             // stops validating properly, I have a fallback to prevent server crashes from
             // NumberFormatException
-            try {
-                int guessValue = Integer.parseInt(guess);
-                // record server local state (used in round end)
-                sender.setGuess(guessValue);
-                // unicast guess to player for confirmation
-                unicastGuessConfirmation(sender, guessValue);
-                // NOTE: we won't evaluate here, we'll do it during onRoundEnd()
-            } catch (NumberFormatException e) {
-                LoggerUtil.INSTANCE.warning("[GameServer] Failed to parse turn action as number: " + guess);
-                unicastGameMessage(sender,
-                        "Failed to parse your guess as a number. Please enter a valid number between 1 and 10.");
-                return;
-            }
+            // try {
+            //    int guessValue = Integer.parseInt(guess);
+            //    sender.setGuess(guessValue);
+            //    unicastGuessConfirmation(sender, guessValue);
+            // } catch (NumberFormatException e) {
+            //    LoggerUtil.INSTANCE.warning("[GameServer] Failed to parse turn action as number: " + guess);
+            //    unicastGameMessage(sender,
+            //            "Failed to parse your guess as a number. Please enter a valid number between 1 and 10.");
+            //    return;
+            // }
+            sender.setChoice(choice);
+            unicastChoiceConfirmation(sender,choice);
 
             // keep the guess hidden from other players in this example
             broadcastGameMessage(sender.getDisplayName() + " made a guess.");
@@ -418,8 +418,12 @@ public class GameServer extends BaseGameServer {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendPlayerPoints(clientId, points));
     }
 
-    private void unicastGuessConfirmation(ServerThread target, int guess) {
-        Server.INSTANCE.unicast(target, serverThread -> serverThread.sendGuessConfirmation(guess));
+    // private void unicastGuessConfirmation(ServerThread target, int guess) {
+    //    Server.INSTANCE.unicast(target, serverThread -> serverThread.sendGuessConfirmation(guess));
+    //}
+
+    private void unicastChoiceConfirmation(ServerThread target, String choice) {
+        Server.INSTANCE.unicast(target, serverThread -> serverThread.sendChoiceConfirmation(choice));    
     }
 
     /**
