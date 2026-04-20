@@ -172,9 +172,17 @@ public class GameServer extends BaseGameServer {
         broadcastGameMessage("Round ended.");
 
         // example process round end logic; everyone gains a point for a correct guess
-        broadcastGameMessage("Evaluating guesses... The correct number was " + hiddenNumber);
+        broadcastGameMessage("Evaluating choices. The first person's guess was " + hiddenNumber);
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
         for (ServerThread player : snapshot) {
+            // I'm starting off here by simply passing a message that shows each player's choice. This allows for a sort of sanity check to see if each choice is actually being passed properly to GameServer through ServerThread.
+            if (player.isTurnTaken()) {
+                broadcastGameMessage(player.getDisplayName() + " chose: " + player.getChoice());
+            }
+            else         
+                broadcastGameMessage(player.getDisplayName() + " did not submit a choice in time.");
+        }
+
             // if (player.getGuess() == hiddenNumber) {
             //    player.setPoints(player.getPoints() + 1);
                 // sync points to all
@@ -185,7 +193,6 @@ public class GameServer extends BaseGameServer {
                 // can reset guess here
             //    player.setGuess(0);
             // This needs to be changed to work with RPS logic. 
-        }
 
         LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
         // TODO: add logic to determine if session should end or next round should

@@ -140,7 +140,7 @@ public enum Client {
             case USERS: // client-side command
                 StringBuilder sb = new StringBuilder();
                 sb.append("Known clients:\n");
-                knownUsers.values().forEach(c -> sb.append(String.format("%s%s Ready:%s Turn:%s Points:%s Guess:%s\n",
+                knownUsers.values().forEach(c -> sb.append(String.format("%s%s Ready:%s Turn:%s Points:%s Choice:%s\n",
                         c.getDisplayName(),
                         c.getClientId() == myUser.getClientId() ? " (you)" : "",
                         c.isReady() ? "[x]" : "[ ]",
@@ -199,7 +199,7 @@ public enum Client {
      * @param action
      * @throws IOException
      */
-    private void sendGuess(String action) throws IOException {
+    private void sendChoice(String action) throws IOException {
         String validatedTurnAction = action == null ? "" : action.trim();
 
         if (isLocalValidationEnabled) {
