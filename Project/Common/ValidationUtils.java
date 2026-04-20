@@ -146,14 +146,22 @@ public final class ValidationUtils {
 
         // example validation for example game
         // requires a number between 1 and 10 (inclusive)
-        try {
-            int guess = Integer.parseInt(normalized);
-            if (guess < 1 || guess > 10) {
-                throw new InvalidTurnOptionException("Please enter a number between 1 and 10.");
-            }
-        } catch (NumberFormatException e) {
-            throw new InvalidTurnOptionException("Please enter a valid number.");
+    //    try {
+    //        int guess = Integer.parseInt(normalized);
+    //        if (guess < 1 || guess > 10) {
+    //            throw new InvalidTurnOptionException("Please enter a number between 1 and 10.");
+    //        }
+    //    } catch (NumberFormatException e) {
+    //        throw new InvalidTurnOptionException("Please enter a valid number.");
+    //    }
+    //    return normalized;
+        switch (normalized) {
+            case "r": normalized = "rock"; break;
+            case "p": normalized = "paper"; break;
+            case "s": normalized = "scissors"; break;
         }
-        return normalized;
+        if (!normalized.equals("rock") && !normalized.equals("paper") && !normalized.equals("scissors")) {
+            throw new InvalidTurnOptionException("Please enter rock, paper, or scissors (or r/p/s).");
+        }
     }
 }

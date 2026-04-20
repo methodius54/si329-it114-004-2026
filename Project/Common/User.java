@@ -89,7 +89,7 @@ public class User {
     public void resetGameState() {
         this.ready = false;
         this.turnTaken = false;
-        this.guess = 0; // example user data
+        this.choice = null; // example user data
         this.points = 0;
     }
 

@@ -146,7 +146,8 @@ public enum Client {
                         c.isReady() ? "[x]" : "[ ]",
                         c.isTurnTaken() ? "[x]" : "[ ]",
                         c.getPoints(),
-                        c.getGuess() == 0 ? "[?]" : c.getGuess())));
+                //        c.getGuess() == 0 ? "[?]" : c.getGuess())));
+                        c.getGuess() == null ? "[?]" : c.getChoice()
                 LoggerUtil.INSTANCE.info(TextFX.colorize(sb.toString().trim(), Color.CYAN));
                 return true;
             case REVERSE:
@@ -408,8 +409,11 @@ public enum Client {
                 LoggerUtil.INSTANCE.info("Server acknowledged disconnect. Closing connection.");
                 closeServerConnection();
                 break;
-            case GUESS:
-                processGuessConfirmation(payload);
+            // case GUESS:
+            //    processGuessConfirmation(payload);
+            //    break;
+            case CHOICE:
+                processChoiceConfirmation(payload);
                 break;
             case POINTS:
                 processPoints(payload);
@@ -448,14 +452,20 @@ public enum Client {
 
     }
 
-    private void processGuessConfirmation(Payload payload) {
-        if (!(payload instanceof PointsPayload)) {
-            LoggerUtil.INSTANCE.warning("Expected PointsPayload for GUESS confirmation, got: " + payload.getClass());
-            return;
-        }
-        int guess = ((PointsPayload) payload).getPoints(); // abusing the points field to receive the guess back
-        myUser.setGuess(guess); // update local state (example)
-        LoggerUtil.INSTANCE.info(TextFX.colorize("Your guess of " + guess + " has been recorded.", Color.GREEN));
+    // private void processGuessConfirmation(Payload payload) {
+    //    if (!(payload instanceof PointsPayload)) {
+    //        LoggerUtil.INSTANCE.warning("Expected PointsPayload for GUESS confirmation, got: " + payload.getClass());
+    //        return;
+    //    }
+    //    int guess = ((PointsPayload) payload).getPoints(); // abusing the points field to receive the guess back
+    //    myUser.setGuess(guess); // update local state (example)
+    //    LoggerUtil.INSTANCE.info(TextFX.colorize("Your guess of " + guess + " has been recorded.", Color.GREEN));
+    // }
+
+    private void processChoiceConfirmation(Payload payload) {
+        String choice = payload.getMessage();
+        myUser.setChoice(choice);
+        LoggerUtil.INSTANCE.info(TextFX.colorize("Your choice of " + choice + " has been recorded.", Color.GREEN));
     }
 
     private void processTurnStatus(Payload payload) {
