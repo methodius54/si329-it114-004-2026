@@ -96,27 +96,6 @@ public class GameServer extends BaseGameServer {
 
     @Override
     protected synchronized void onRoundStart() {
-        LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() start");
-        resetRoundTimer();
-        startRoundTimer();
-        phase = Phase.IN_PROGRESS; // toggle from READY or EVALUATION
-        broadcastCurrentPhase();
-        for (ServerThread player : getActivePlayers()) {
-            player.setTurnTaken(false);
-            broadcastTurnStatus(player.getClientId(), false);
-        }
-        roundNumber++; // TODO: future lessons may sync this as number later for better UI visibility
-        broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
-        // example round setup
-        broadcastGameMessage("The game has started! Use /choice to choose your move!.");
-
-        LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
-        // onTurnStart(); this example doesn't use turns, all players take their
-        // turn simultaneously within the round time limit
-    }
-
-    @Override
-    protected synchronized void onTurnStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
         resetTurnTimer();
         startTurnTimer();
@@ -134,6 +113,28 @@ public class GameServer extends BaseGameServer {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
     }
 
+        @Override
+    protected synchronized void onTurnStart() {
+        LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
+        resetTurnTimer();
+
+        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
+        if (snapshot.isEmpty()) {
+            onSessionEnd();
+            return;
+        }
+        // TODO: pick next player (covered in a future lesson, below is a temporary
+        // scaffold that just picks the first active player)
+        ServerThread chosen = snapshot.get(0); // simple scaffold: first active player
+        currentTurnPlayerId = chosen.getClientId();
+
+        startTurnTimer();
+        broadcastGameMessage("Turn started for " + chosen.getDisplayName() + ". Use /turn <action> within "
+                + TURN_SECONDS + "s.");
+        LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
+    }
+
+
     @Override
     protected synchronized void onTurnEnd() {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnEnd() start");
@@ -145,7 +146,7 @@ public class GameServer extends BaseGameServer {
 
         // if all players have taken their turn, enter onRoundEnd() early instead of
         // waiting for the turn timer to expire
-        boolean allTaken = getActivePlayers().stream().allMatch(ServerThread::isTurnTaken);
+        boolean allTaken = getActivePlayers().stream().filter(p -> !p.isEliminated()).allMatch(ServerThread::isTurnTaken);
         if (allTaken) {
             // NOTE: be careful to not have two closely timed flows both call onRoundEnd()
             // simultaneously
