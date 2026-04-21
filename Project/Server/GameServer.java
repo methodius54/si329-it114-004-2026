@@ -310,7 +310,7 @@ public class GameServer extends BaseGameServer {
 
             sender.setChoice(choice);
             unicastChoiceConfirmation(sender, choice);
-            broadcastGameMessage(sender.getDisplayName());
+            broadcastGameMessage(sender.getDisplayName() + " has made their choice.");
             sender.setTurnTaken(true);
             broadcastTurnStatus(sender.getClientId(), true);
             onTurnEnd();
