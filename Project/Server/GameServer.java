@@ -174,7 +174,31 @@ public class GameServer extends BaseGameServer {
             if(!player.isEliminated() && ! player.isTurnTaken()) {
                 player.setEliminated(true);
                 broadcastEliminationStatus(player.getClientId(), true);
-                broadcastGameMessage(player.getDisplayName() + " was elimiated for not making a choice");
+                broadcastGameMessage(player.getDisplayName() + " was eliminated for not making a choice");
+            }
+
+            List<ServerThread> eligiblePlayers = new ArrayList<>();
+            for (ServerThread player : snapshot) {
+                if(!player.isEliminated() && player.getChoice() != null) {
+                    eligiblePlayers.add(player);
+                }
+            }
+
+            for (int i = 0; i < eligiblePlayers.size(); i++) {
+                ServerThread attacker = eligiblePlayers(i);
+                ServerThread defender = eligiblePlayers((i + 1) & eligiblePlayers.size());
+                String aChoice = attacker.getChoice();
+                String dchoice = defender.getChoice();
+                int result = resolveRPS(achoice, dChoice);
+                if (result > 0) {
+                    attacker.setPoints(attacker.getPoints() + 1);
+                    broadcastPlayerPoints(attacker);
+                    broadcastGameMessage("test");
+                }
+                else if (result < 0) {
+                    defender.setPoints(defender.getPoints + 1);
+                }
+
             }
         }
     }
