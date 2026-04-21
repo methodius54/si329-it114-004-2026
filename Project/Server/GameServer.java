@@ -10,13 +10,6 @@ import Project.Common.TimedEvent;
 import Project.Common.ValidationUtils;
 import Project.Exceptions.ValidationException;
 
-/**
- * Concrete game session scaffold based on the old GameRoom lifecycle.
- *
- * Commands currently supported from clients:
- * - /ready
- * - /turn <action>
- */
 public class GameServer extends BaseGameServer {
 
     private static final int MIN_PLAYERS_TO_START = 2;
@@ -30,17 +23,15 @@ public class GameServer extends BaseGameServer {
     private volatile TimedEvent roundTimer;
     private volatile TimedEvent turnTimer;
     private volatile Long currentTurnPlayerId;
-    private int roundNumber = 0;
-    // hidden number was removed since it's not used anymore
+    private volatile int roundNumber = 0;
 
-    // start region for lifecycle hook implementations
     @Override
     protected void onSpectatorJoined(ServerThread client) {
         if (client == null) {
             return;
         }
         if (phase == Phase.INACTIVE) {
-            return; // nothing to sync if the session isn't active
+            return;
         }
         LoggerUtil.INSTANCE.info("[GameServer] Spectator joined: " + client.getDisplayName());
         unicastGameMessage(client, "Joined as spectator. Current active players: " + getActivePlayerCount());
@@ -53,7 +44,7 @@ public class GameServer extends BaseGameServer {
             return;
         }
         if (phase == Phase.INACTIVE) {
-            return; // nothing to sync if the session isn't active
+            return;
         }
         LoggerUtil.INSTANCE.info("[GameServer] Player joined via ready: " + client.getDisplayName());
         unicastGameMessage(client, "Joined as active player. Waiting room status: "
@@ -70,7 +61,6 @@ public class GameServer extends BaseGameServer {
         if (client == null) {
             return;
         }
-
         LoggerUtil.INSTANCE.info("[GameServer] Player left: " + client.getDisplayName());
         if (getActivePlayerCount() == 0) {
             resetReadyTimer();
@@ -95,9 +85,8 @@ public class GameServer extends BaseGameServer {
 
     @Override
     protected synchronized void onRoundStart() {
-        LoggerUtil.INSTANCE.info("[GameServer] onRooundStart() start");
+        LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() start");
         resetRoundTimer();
-        startRoundTimer();
         phase = Phase.IN_PROGRESS;
         broadcastCurrentPhase();
         for (ServerThread player : getActivePlayers()) {
@@ -108,31 +97,26 @@ public class GameServer extends BaseGameServer {
             }
         }
         roundNumber++;
-        broadcastGameMessage("Round " + roundNumber + " started. Use /choice <r/p/s> to make your pick. You have " + ROUND_SECONDS + "s.");        
+        startRoundTimer();
+        broadcastGameMessage("Round " + roundNumber + " started. Use /choice <r/p/s> to make your pick. You have " + ROUND_SECONDS + "s.");
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
     }
 
-        @Override
+    @Override
     protected synchronized void onTurnStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
         resetTurnTimer();
-
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
         if (snapshot.isEmpty()) {
             onSessionEnd();
             return;
         }
-        // TODO: pick next player (covered in a future lesson, below is a temporary
-        // scaffold that just picks the first active player)
-        ServerThread chosen = snapshot.get(0); // simple scaffold: first active player
+        ServerThread chosen = snapshot.get(0);
         currentTurnPlayerId = chosen.getClientId();
-
         startTurnTimer();
-        broadcastGameMessage("Turn started for " + chosen.getDisplayName() + ". Use /turn <action> within "
-                + TURN_SECONDS + "s.");
+        broadcastGameMessage("Turn started for " + chosen.getDisplayName() + ". Use /turn <action> within " + TURN_SECONDS + "s.");
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
     }
-
 
     @Override
     protected synchronized void onTurnEnd() {
@@ -140,15 +124,8 @@ public class GameServer extends BaseGameServer {
         resetTurnTimer();
         currentTurnPlayerId = null;
         LoggerUtil.INSTANCE.info("[GameServer] onTurnEnd() end");
-        // onRoundEnd(); this example doesn't use turns, but this hook is called at the
-        // end of handleTurn() and we don't want it to end the round
-
-        // if all players have taken their turn, enter onRoundEnd() early instead of
-        // waiting for the turn timer to expire
         boolean allTaken = getActivePlayers().stream().filter(p -> !p.isEliminated()).allMatch(ServerThread::isTurnTaken);
         if (allTaken) {
-            // NOTE: be careful to not have two closely timed flows both call onRoundEnd()
-            // simultaneously
             onRoundEnd();
         }
     }
@@ -156,8 +133,6 @@ public class GameServer extends BaseGameServer {
     @Override
     protected synchronized void onRoundEnd() {
         LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() start");
-        // prevent potential multiple calls to onRoundEnd() from both turn timer
-        // expiring and all players taking their turn
         if (phase == Phase.EVALUATION) {
             LoggerUtil.INSTANCE.info("[GameServer] Already in evaluation phase, skipping redundant onRoundEnd() call");
             return;
@@ -166,54 +141,58 @@ public class GameServer extends BaseGameServer {
         broadcastCurrentPhase();
         resetRoundTimer();
         broadcastGameMessage("Round ended. Evaluating choices");
-        // note to self this is where it should diverge from baseline
 
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
 
         for (ServerThread player : snapshot) {
-            if(!player.isEliminated() && ! player.isTurnTaken()) {
+            if (!player.isEliminated() && !player.isTurnTaken()) {
                 player.setEliminated(true);
                 broadcastEliminationStatus(player.getClientId(), true);
                 broadcastGameMessage(player.getDisplayName() + " was eliminated for not making a choice");
             }
         }
 
-            List<ServerThread> eligiblePlayers = new ArrayList<>();
-            for (ServerThread player : snapshot) {
-                if(!player.isEliminated() && player.getChoice() != null) {
-                    eligiblePlayers.add(player);
-                }
+        List<ServerThread> eligiblePlayers = new ArrayList<>();
+        for (ServerThread player : snapshot) {
+            if (!player.isEliminated() && player.getChoice() != null) {
+                eligiblePlayers.add(player);
             }
-            
+        }
 
-            for (int i = 0; i < eligiblePlayers.size(); i++) {
-                ServerThread attacker = eligiblePlayers.get(i);
-                ServerThread defender = eligiblePlayers.get((i + 1) % eligiblePlayers.size());
-                String aChoice = attacker.getChoice();
-                String dChoice = defender.getChoice();
-                int result = resolveRPS(aChoice, dChoice);
-                if (result > 0) {
-                    attacker.setPoints(attacker.getPoints() + 1);
-                    broadcastPlayerPoints(attacker);
-                    broadcastGameMessage(attacker.getDisplayName() + " chose " + aChoice + " while " + defender.getDisplayName() + " chose " + dChoice + "; " + attacker.getDisplayName() + " wins!");
-                }
-                else if (result < 0) {
-                    defender.setPoints(defender.getPoints() + 1);
-                    broadcastPlayerPoints(defender);
-                    broadcastGameMessage(defender.getDisplayName() + " chose " + dChoice + " while " + attacker.getDisplayName() + " chose " + aChoice + "; " + defender.getDisplayName() + " wins!");
-                }
-                else {
-                    broadcastGameMessage(attacker.getDisplayName() + " chose " + aChoice + " while " + defender.getDisplayName() + " chose " + dChoice + "; it's a tie!");
-                }
+        for (int i = 0; i < eligiblePlayers.size(); i++) {
+            ServerThread attacker = eligiblePlayers.get(i);
+            ServerThread defender = eligiblePlayers.get((i + 1) % eligiblePlayers.size());
 
+            if (attacker.isEliminated() || defender.isEliminated()) {
+                continue;
             }
-                long remaining = snapshot.stream().filter(p -> !p.isEliminated()).count();
-                
-                LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
+
+            String aChoice = attacker.getChoice();
+            String dChoice = defender.getChoice();
+            int result = resolveRPS(aChoice, dChoice);
+            if (result > 0) {
+                attacker.setPoints(attacker.getPoints() + 1);
+                broadcastPlayerPoints(attacker);
+                defender.setEliminated(true);
+                broadcastEliminationStatus(defender.getClientId(), true);
+                broadcastGameMessage(attacker.getDisplayName() + " chose " + aChoice + " while " + defender.getDisplayName() + " chose " + dChoice + "; " + attacker.getDisplayName() + " wins!");
+            } else if (result < 0) {
+                defender.setPoints(defender.getPoints() + 1);
+                broadcastPlayerPoints(defender);
+                attacker.setEliminated(true);
+                broadcastEliminationStatus(attacker.getClientId(), true);
+                broadcastGameMessage(defender.getDisplayName() + " chose " + dChoice + " while " + attacker.getDisplayName() + " chose " + aChoice + "; " + defender.getDisplayName() + " wins!");
+            } else {
+                broadcastGameMessage(attacker.getDisplayName() + " chose " + aChoice + " while " + defender.getDisplayName() + " chose " + dChoice + "; it's a tie!");
+            }
+        }
+
+        long remaining = snapshot.stream().filter(p -> !p.isEliminated()).count();
+
+        LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
         if (remaining <= 1) {
             onSessionEnd();
-        }
-        else {
+        } else {
             onRoundStart();
         }
     }
@@ -230,7 +209,6 @@ public class GameServer extends BaseGameServer {
 
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
 
-        //note
         List<ServerThread> remaining = new ArrayList<>();
         for (ServerThread p : snapshot) {
             if (!p.isEliminated()) remaining.add(p);
@@ -238,10 +216,10 @@ public class GameServer extends BaseGameServer {
 
         if (remaining.size() == 1) {
             broadcastGameMessage(remaining.get(0).getDisplayName() + " wins the session!");
-        }
-        else {
+        } else {
             broadcastGameMessage("Session ended in a tie!");
         }
+
         snapshot.sort((a, b) -> Integer.compare(b.getPoints(), a.getPoints()));
         StringBuilder sb = new StringBuilder("Final Scoreboard:\n");
         for (int i = 0; i < snapshot.size(); i++) {
@@ -249,7 +227,7 @@ public class GameServer extends BaseGameServer {
             sb.append(String.format("%d. %s - %d points\n", i + 1, p.getDisplayName(), p.getPoints()));
         }
         broadcastGameMessage(sb.toString());
-        
+
         for (ServerThread player : snapshot) {
             player.resetGameState();
         }
@@ -259,9 +237,6 @@ public class GameServer extends BaseGameServer {
         broadcastGameMessage("Session ended. Type /ready to join the next session.");
         LoggerUtil.INSTANCE.info("[GameServer] onSessionEnd() end");
     }
-    // end region for lifecycle hook implementations
-
-    // Start region for timer handlers ===================================
 
     private synchronized void startReadyTimer(boolean resetOnTry) {
         if (phase != Phase.READY) {
@@ -273,8 +248,7 @@ public class GameServer extends BaseGameServer {
         if (readyTimer == null) {
             readyTimer = new TimedEvent(READY_SECONDS, this::checkReadyStatus);
             readyTimer.setTickCallback(time -> LoggerUtil.INSTANCE.info("[GameServer] Ready timer: " + time));
-            broadcastGameMessage(
-                    "Ready check started. Session begins in " + READY_SECONDS + "s if enough players are ready.");
+            broadcastGameMessage("Ready check started. Session begins in " + READY_SECONDS + "s if enough players are ready.");
         }
     }
 
@@ -286,7 +260,12 @@ public class GameServer extends BaseGameServer {
     }
 
     private synchronized void startRoundTimer() {
-        roundTimer = new TimedEvent(ROUND_SECONDS, this::onRoundEnd);
+        final int capturedRound = roundNumber;
+        roundTimer = new TimedEvent(ROUND_SECONDS, () -> {
+            if (roundNumber == capturedRound) {
+                onRoundEnd();
+            }
+        });
         roundTimer.setTickCallback(time -> LoggerUtil.INSTANCE.info("[GameServer] Round timer: " + time));
     }
 
@@ -309,7 +288,6 @@ public class GameServer extends BaseGameServer {
         }
     }
 
-    // End region for timer handlers ===================================
     private synchronized void checkReadyStatus() {
         if (phase != Phase.READY) {
             return;
@@ -321,8 +299,6 @@ public class GameServer extends BaseGameServer {
             onSessionEnd();
         }
     }
-
-    // start region for handle*() methods called by Server
 
     protected void handleChoice(ServerThread sender, String choice) {
         try {
@@ -338,18 +314,12 @@ public class GameServer extends BaseGameServer {
             sender.setTurnTaken(true);
             broadcastTurnStatus(sender.getClientId(), true);
             onTurnEnd();
-        }
-        catch (ValidationException e) {
+        } catch (ValidationException e) {
             LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
             unicastGameMessage(sender, e.getMessage());
         }
     }
 
-    /**
-     * Handles a player's ready action. Validates the action, registers them as an
-     * active player, and starts the ready timer. Sends an error message back to the
-     * player on failure.
-     */
     public void handleReady(ServerThread sender) {
         try {
             ValidationUtils.requirePhaseAtMost(phase, Phase.READY);
@@ -375,10 +345,6 @@ public class GameServer extends BaseGameServer {
         }
     }
 
-    /**
-     * Handles a player's turn action. Validates the action, records the turn, and
-     * advances the game. Sends an error message back to the player on failure.
-     */
     @Deprecated
     public void handleTurn(ServerThread sender, String action) {
         try {
@@ -386,12 +352,6 @@ public class GameServer extends BaseGameServer {
             ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
             ValidationUtils.requireTurnNotTaken(sender.isTurnTaken());
             String normalizedAction = ValidationUtils.requireValidTurnOption(action);
-
-            // TODO: turn logic would go here, in this example we're just marking that we
-            // took a turn
-            // ValidationUtils.requireCurrentPlayer(currentTurnPlayerId,
-            // sender.getClientId());
-
             sender.setTurnTaken(true);
             broadcastTurnStatus(sender.getClientId(), true);
             onTurnEnd();
@@ -401,12 +361,7 @@ public class GameServer extends BaseGameServer {
         }
     }
 
-    // end region for handle*() methods called by Server
-
-    // start region for helper methods to send data to clients
-
-    private void broadcastPointsReset() { // optional reset for specific property, but we'll leverage the READY reset as
-                                          // a full reset for simplicity in this example
+    private void broadcastPointsReset() {
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendPlayerPoints(Constants.DEFAULT_CLIENT_ID, 0));
     }
 
@@ -414,8 +369,7 @@ public class GameServer extends BaseGameServer {
         if (player == null) {
             return;
         }
-        Server.INSTANCE.sendOrDisconnect(
-                serverThread -> serverThread.sendPlayerPoints(player.getClientId(), player.getPoints()));
+        Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendPlayerPoints(player.getClientId(), player.getPoints()));
     }
 
     private void unicastPlayerPoints(ServerThread target, long clientId, int points) {
@@ -425,18 +379,10 @@ public class GameServer extends BaseGameServer {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendPlayerPoints(clientId, points));
     }
 
-    // private void unicastGuessConfirmation(ServerThread target, int guess) {
-    //    Server.INSTANCE.unicast(target, serverThread -> serverThread.sendGuessConfirmation(guess));
-    //}
-
     private void unicastChoiceConfirmation(ServerThread target, String choice) {
-        Server.INSTANCE.unicast(target, serverThread -> serverThread.sendChoiceConfirmation(choice));    
+        Server.INSTANCE.unicast(target, serverThread -> serverThread.sendChoiceConfirmation(choice));
     }
 
-    /**
-     * Sends the current phase plus all existing active players' ready, turn, and
-     * points state to a newly joined player.
-     */
     private void unicastGameStateToJoiner(ServerThread joiner) {
         if (joiner == null) {
             return;
@@ -453,42 +399,34 @@ public class GameServer extends BaseGameServer {
         }
     }
 
-    /** Sends the current game phase to all connected clients. */
     private void broadcastCurrentPhase() {
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendGamePhase(phase));
     }
 
-    /** Sends the current game phase to a single client. */
     private void unicastCurrentPhase(ServerThread target) {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendGamePhase(phase));
     }
 
-    /** Notifies all connected clients of a player's ready status. */
     private void broadcastReadyStatus(long clientId, boolean isReady) {
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendReadyStatus(clientId, isReady));
     }
 
-    /** Sends a player's ready status to a single client. */
     private void unicastReadyStatus(ServerThread target, long clientId, boolean isReady) {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendReadyStatus(clientId, isReady));
     }
 
-    /** Notifies all connected clients of a player's turn-taken status. */
     private void broadcastTurnStatus(long clientId, boolean hasTakenTurn) {
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendTurnStatus(clientId, hasTakenTurn));
     }
 
-    /** Sends a player's turn-taken status to a single client. */
     private void unicastTurnStatus(ServerThread target, long clientId, boolean hasTakenTurn) {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendTurnStatus(clientId, hasTakenTurn));
     }
 
-    /** Sends a game message to all connected clients. */
     private void broadcastGameMessage(String message) {
         Server.INSTANCE.broadcast(null, GAME_TAG + message);
     }
 
-    /** Sends a game message to a single client. */
     private void unicastGameMessage(ServerThread target, String message) {
         if (target == null) {
             return;
@@ -497,7 +435,6 @@ public class GameServer extends BaseGameServer {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendMessage(formatted));
     }
 
-    // Adds the elimination broadcast helper
     private void broadcastEliminationStatus(long clientId, boolean isEliminated) {
         Server.INSTANCE.sendOrDisconnect(st -> st.sendEliminationStatus(clientId, isEliminated));
     }
@@ -505,11 +442,10 @@ public class GameServer extends BaseGameServer {
     private int resolveRPS(String a, String b) {
         if (a.equals(b)) return 0;
         if ((a.equals("rock") && b.equals("scissors")) ||
-        (a.equals("scissors") && b.equals("paper")) ||
-        (a.equals("paper") && b.equals("rock"))) {
-        return 1;
+            (a.equals("scissors") && b.equals("paper")) ||
+            (a.equals("paper") && b.equals("rock"))) {
+            return 1;
+        }
+        return -1;
     }
-    return -1;    
-}
-    // end region for helper methods to send data to clients
 }

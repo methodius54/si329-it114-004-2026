@@ -43,7 +43,7 @@ public class User {
     public void setChoice(String choice) { this.choice = choice; }
     
     public boolean isEliminated() { return eliminated; }
-    public void setEliminated(boolean elminiated) {this.eliminated = eliminated;}
+    public void setEliminated(boolean eliminated) {this.eliminated = eliminated;}
     /**
      * @param clientId the clientId to set
      */
