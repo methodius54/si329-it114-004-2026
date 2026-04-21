@@ -460,5 +460,9 @@ public class GameServer extends BaseGameServer {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendMessage(formatted));
     }
 
+    // Adds the elimination broadcast helper
+    private void broadcastEliminationStatus(long clientId, boolean isEliminated) {
+        Server.INSTANCE.sendOrDisconnect(st -> st.sendEliminationStatus(clientId, isEliminated));
+    }
     // end region for helper methods to send data to clients
 }
