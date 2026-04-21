@@ -32,8 +32,7 @@ public class GameServer extends BaseGameServer {
     private volatile TimedEvent turnTimer;
     private volatile Long currentTurnPlayerId;
     private int roundNumber = 0;
-    // example data
-    private int hiddenNumber = 0;
+    // hidden number was removed since it's not used anymore
 
     // start region for lifecycle hook implementations
     @Override
@@ -109,7 +108,6 @@ public class GameServer extends BaseGameServer {
         roundNumber++; // TODO: future lessons may sync this as number later for better UI visibility
         broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
         // example round setup
-        hiddenNumber = new Random().nextInt(10) + 1;
         broadcastGameMessage("The game has started! Use /choice to choose your move!.");
 
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
@@ -121,20 +119,18 @@ public class GameServer extends BaseGameServer {
     protected synchronized void onTurnStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
         resetTurnTimer();
-
-        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        if (snapshot.isEmpty()) {
-            onSessionEnd();
-            return;
-        }
-        // TODO: pick next player (covered in a future lesson, below is a temporary
-        // scaffold that just picks the first active player)
-        ServerThread chosen = snapshot.get(0); // simple scaffold: first active player
-        currentTurnPlayerId = chosen.getClientId();
-
         startTurnTimer();
-        broadcastGameMessage("Turn started for " + chosen.getDisplayName() + ". Use /turn <action> within "
-                + TURN_SECONDS + "s.");
+        phase = Phase.IN_PROGRESS;
+        broadcastCurrentPhase();
+        for (ServerThread player : getActivePlayers()) {
+            if (!player.isEliminated()) {
+                player.setChoice(null);
+                player.setTurnTaken(false);
+                broadcastTurnStatus(player.getClientId(), false);
+            }
+        }
+        roundNumber++;
+        broadcastGameMessage("Round " + roundNumber + " started. Use /choice <r/p/s> to make your pick. You have " + ROUND_SECONDS + "s.");        
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
     }
 
@@ -172,7 +168,6 @@ public class GameServer extends BaseGameServer {
         broadcastGameMessage("Round ended.");
 
         // example process round end logic; everyone gains a point for a correct guess
-        broadcastGameMessage("Evaluating choices. The first person's guess was " + hiddenNumber);
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
         for (ServerThread player : snapshot) {
             // I'm starting off here by simply passing a message that shows each player's choice. This allows for a sort of sanity check to see if each choice is actually being passed properly to GameServer through ServerThread.
