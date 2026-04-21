@@ -300,12 +300,24 @@ public class GameServer extends BaseGameServer {
     // start region for handle*() methods called by Server
 
     protected void handleChoice(ServerThread sender, String choice) {
-    sender.setChoice(choice);
-    unicastChoiceConfirmation(sender, choice);
-    broadcastGameMessage(sender.getDisplayName() + " made their choice.");
-    sender.setTurnTaken(true);
-    broadcastTurnStatus(sender.getClientId(), true);
-    onTurnEnd();
+        try {
+            ValidationUtils.requireParticipating(isActivePlayer(sender));
+            ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
+            ValidationUtils.requireTrue(!sender.isEliminated(), "You are eliminated! You can't make a choice!");
+            ValidationUtils.requireTurnNotTaken(sender.isTurnTaken());
+            choice = ValidationUtils.requireValidTurnOption(choice.trim());
+
+            sender.setChoice(choice);
+            unicastChoiceConfirmation(sender, choice);
+            broadcastGameMessage(sender.getDisplayName());
+            sender.setTurnTaken(true);
+            broadcastTurnStatus(sender.getClientId(), true);
+            onTurnEnd();
+        }
+        catch (ValidationException e) {
+            LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
+            unicastGameMessage(sender, e.getMessage());
+        }
     }
 
     /**
