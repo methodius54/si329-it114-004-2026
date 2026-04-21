@@ -454,6 +454,22 @@ public enum Client {
         }
 
     }
+    private void processEliminationStatus(Payload payload) {
+        if (!(payload instanceof BoolPayload)) {
+            LoggerUtil.INSTANCE.warning("Expected BoolPayload for PLAYER_ELIMINATED, got: " + payload.getClass());
+            return;
+        }
+    BoolPayload bp = (BoolPayload) payload;
+    User user = knownUsers.get(bp.getClientId());
+    if (user == null) {
+        return;
+    }
+    user.setEliminated(bp.getValue());
+    if (bp.getValue()) {
+        LoggerUtil.INSTANCE.info(TextFX.colorize(
+            "[Game] " + user.getDisplayName() + " has been eliminated.", Color.RED));
+    }
+}
 
     // private void processGuessConfirmation(Payload payload) {
     //    if (!(payload instanceof PointsPayload)) {

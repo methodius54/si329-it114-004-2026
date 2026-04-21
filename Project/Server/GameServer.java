@@ -195,15 +195,15 @@ public class GameServer extends BaseGameServer {
                 if (result > 0) {
                     attacker.setPoints(attacker.getPoints() + 1);
                     broadcastPlayerPoints(attacker);
-                    broadcastGameMessage("1 wins");
+                    broadcastGameMessage(attacker.getDisplayName() + " chose " + aChoice + " while " + defender.getDisplayName() + " chose " + dChoice + "; " + attacker.getDisplayName() + " wins!");
                 }
                 else if (result < 0) {
                     defender.setPoints(defender.getPoints() + 1);
                     broadcastPlayerPoints(defender);
-                    broadcastGameMessage("2 wins");
+                    broadcastGameMessage(defender.getDisplayName() + " chose " + dChoice + " while " + attacker.getDisplayName() + " chose " + aChoice + "; " + defender.getDisplayName() + " wins!");
                 }
                 else {
-                    broadcastGameMessage("tie");
+                    broadcastGameMessage(attacker.getDisplayName() + " chose " + aChoice + " while " + defender.getDisplayName() + " chose " + dChoice + "; it's a tie!");
                 }
 
             }
@@ -242,6 +242,22 @@ public class GameServer extends BaseGameServer {
         else {
             broadcastGameMessage("Session ended in a tie!");
         }
+        snapshot.sort((a, b) -> Integer.compare(b.getPoints(), a.getPoints()));
+        StringBuilder sb = new StringBuilder("Final Scoreboard:\n");
+        for (int i = 0; i < snapshot.size(); i++) {
+            ServerThread p = snapshot.get(i);
+            sb.append(String.format("%d. %s - %d points\n", i + 1, p.getDisplayName(), p.getPoints()));
+        }
+        broadcastGameMessage(sb.toString());
+        
+        for (ServerThread player : snapshot) {
+            player.resetGameState();
+        }
+        broadcastReadyStatus(Constants.DEFAULT_CLIENT_ID, false);
+        clearActivePlayers();
+        broadcastCurrentPhase();
+        broadcastGameMessage("Session ended. Type /ready to join the next session.");
+        LoggerUtil.INSTANCE.info("[GameServer] onSessionEnd() end");
     }
     // end region for lifecycle hook implementations
 
