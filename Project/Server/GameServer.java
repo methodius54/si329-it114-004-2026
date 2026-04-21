@@ -193,12 +193,15 @@ public class GameServer extends BaseGameServer {
                 if (result > 0) {
                     attacker.setPoints(attacker.getPoints() + 1);
                     broadcastPlayerPoints(attacker);
-                    broadcastGameMessage("test");
+                    broadcastGameMessage("1 wins");
                 }
                 else if (result < 0) {
                     defender.setPoints(defender.getPoints + 1);
                     broadcastPlayerPoints(defender);
-                    broadcastGameMessage("test");
+                    broadcastGameMessage("2 wins");
+                }
+                else {
+                    broadcastGameMessage("tie");
                 }
 
             }
