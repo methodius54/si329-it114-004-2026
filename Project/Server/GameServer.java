@@ -96,8 +96,8 @@ public class GameServer extends BaseGameServer {
     @Override
     protected synchronized void onRoundStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
-        resetTurnTimer();
-        startTurnTimer();
+        resetRoundTimer();
+        startRoundTimer();
         phase = Phase.IN_PROGRESS;
         broadcastCurrentPhase();
         for (ServerThread player : getActivePlayers()) {
@@ -168,7 +168,7 @@ public class GameServer extends BaseGameServer {
         broadcastGameMessage("Round ended. Evaluating choices");
         // note to self this is where it should diverge from baseline
 
-        List<ServerThread> snapshot = new Arraylist(getActivePlayers());
+        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
 
         for (ServerThread player : snapshot) {
             if(!player.isEliminated() && ! player.isTurnTaken()) {
@@ -176,6 +176,7 @@ public class GameServer extends BaseGameServer {
                 broadcastEliminationStatus(player.getClientId(), true);
                 broadcastGameMessage(player.getDisplayName() + " was eliminated for not making a choice");
             }
+        }
 
             List<ServerThread> eligiblePlayers = new ArrayList<>();
             for (ServerThread player : snapshot) {
@@ -183,20 +184,21 @@ public class GameServer extends BaseGameServer {
                     eligiblePlayers.add(player);
                 }
             }
+            
 
             for (int i = 0; i < eligiblePlayers.size(); i++) {
-                ServerThread attacker = eligiblePlayers(i);
-                ServerThread defender = eligiblePlayers((i + 1) & eligiblePlayers.size());
+                ServerThread attacker = eligiblePlayers.get(i);
+                ServerThread defender = eligiblePlayers.get((i + 1) % eligiblePlayers.size());
                 String aChoice = attacker.getChoice();
-                String dchoice = defender.getChoice();
-                int result = resolveRPS(achoice, dChoice);
+                String dChoice = defender.getChoice();
+                int result = resolveRPS(aChoice, dChoice);
                 if (result > 0) {
                     attacker.setPoints(attacker.getPoints() + 1);
                     broadcastPlayerPoints(attacker);
                     broadcastGameMessage("1 wins");
                 }
                 else if (result < 0) {
-                    defender.setPoints(defender.getPoints + 1);
+                    defender.setPoints(defender.getPoints() + 1);
                     broadcastPlayerPoints(defender);
                     broadcastGameMessage("2 wins");
                 }
@@ -205,6 +207,14 @@ public class GameServer extends BaseGameServer {
                 }
 
             }
+                long remaining = snapshot.stream().filter(p -> !p.isEliminated()).count();
+                
+                LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
+        if (remaining <= 1) {
+            onSessionEnd();
+        }
+        else {
+            onRoundStart();
         }
     }
 
@@ -484,5 +494,15 @@ public class GameServer extends BaseGameServer {
     private void broadcastEliminationStatus(long clientId, boolean isEliminated) {
         Server.INSTANCE.sendOrDisconnect(st -> st.sendEliminationStatus(clientId, isEliminated));
     }
+
+    private int resolveRPS(String a, String b) {
+        if (a.equals(b)) return 0;
+        if ((a.equals("rock") && b.equals("scissors")) ||
+        (a.equals("scissors") && b.equals("paper")) ||
+        (a.equals("paper") && b.equals("rock"))) {
+        return 1;
+    }
+    return -1;    
+}
     // end region for helper methods to send data to clients
 }
