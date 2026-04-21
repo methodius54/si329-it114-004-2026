@@ -165,39 +165,18 @@ public class GameServer extends BaseGameServer {
         phase = Phase.EVALUATION;
         broadcastCurrentPhase();
         resetRoundTimer();
-        broadcastGameMessage("Round ended.");
+        broadcastGameMessage("Round ended. Evaluating choices");
+        // note to self this is where it should diverge from baseline
 
-        // example process round end logic; everyone gains a point for a correct guess
-        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
+        List<ServerThread> snapshot = new Arraylist(getActivePlayers());
+
         for (ServerThread player : snapshot) {
-            // I'm starting off here by simply passing a message that shows each player's choice. This allows for a sort of sanity check to see if each choice is actually being passed properly to GameServer through ServerThread.
-            if (player.isTurnTaken()) {
-                broadcastGameMessage(player.getDisplayName() + " chose: " + player.getChoice());
+            if(!player.isEliminated() && ! player.isTurnTaken()) {
+                player.setEliminated(true);
+                broadcastEliminationStatus(player.getClientId(), true);
+                broadcastGameMessage(player.getDisplayName() + " was elimiated for not making a choice");
             }
-            else         
-                broadcastGameMessage(player.getDisplayName() + " did not submit a choice in time.");
         }
-
-            // if (player.getGuess() == hiddenNumber) {
-            //    player.setPoints(player.getPoints() + 1);
-                // sync points to all
-            //    broadcastPlayerPoints(player);
-            //    // feedback
-            //    broadcastGameMessage(
-            //            String.format("%s guessed correctly and gained a point!", player.getDisplayName()));
-                // can reset guess here
-            //    player.setGuess(0);
-            // This needs to be changed to work with RPS logic. 
-
-        LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
-        // TODO: add logic to determine if session should end or next round should
-
-        if (roundNumber >= 5) { // arbitrary end condition for example purposes
-            onSessionEnd();
-        } else {
-            onRoundStart();
-        }
-        // onSessionEnd();
     }
 
     @Override
