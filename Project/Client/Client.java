@@ -418,6 +418,9 @@ public enum Client {
             case POINTS:
                 processPoints(payload);
                 break;
+            case PLAYER_ELIMINATED:
+                processEliminationStatus(payload);
+                break;            
             default:
                 LoggerUtil.INSTANCE.warning("Received unhandled payload type: " + payload.getPayloadType());
         }

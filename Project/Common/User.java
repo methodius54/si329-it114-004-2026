@@ -7,6 +7,7 @@ public class User {
     private boolean turnTaken;
     private String choice = null;
     private int points = 0;
+    private boolean eliminated = false;
 
     public User() {
     }
@@ -40,7 +41,9 @@ public class User {
     // I decided to replace guess with choice
     public String getChoice() { return choice; }
     public void setChoice(String choice) { this.choice = choice; }
-
+    
+    public boolean isEliminated() { return eliminated; }
+    public void setEliminated(boolean elminiated) {this.eliminated = eliminated;}
     /**
      * @param clientId the clientId to set
      */
@@ -87,6 +90,7 @@ public class User {
         this.turnTaken = false;
         this.choice = null; // example user data
         this.points = 0;
+        this.eliminated = false;
     }
 
     public void reset() {

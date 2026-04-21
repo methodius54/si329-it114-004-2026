@@ -153,12 +153,20 @@ public class ServerThread extends BaseServerThread {
 //        payload.setPoints(guess); // abusing the points field to send the guess back for confirmation
 //        return sendToClient(payload);
 //    }
-// I commented this out because the structure helps me understand what is happening here, exactly.
+// I commented this out because the structure helps me understand what is happening here.
 
     protected boolean sendChoiceConfirmation(String choice) {
         Payload payload = new Payload();
         payload.setPayloadType(PayloadType.CHOICE);
         payload.setMessage(choice);
+        return sendToClient(payload);
+    }
+
+    protected boolean sendEliminationStatus(long clientId, boolean isEliminated) {
+        BoolPayload payload = new BoolPayload();
+        payload.setPayloadType(PayloadType.PLAYER_ELIMINATED);
+        payload.setClientId(clientId);
+        payload.setValue(isEliminated);
         return sendToClient(payload);
     }
 

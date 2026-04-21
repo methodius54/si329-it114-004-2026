@@ -110,7 +110,7 @@ public class GameServer extends BaseGameServer {
         broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
         // example round setup
         hiddenNumber = new Random().nextInt(10) + 1;
-        broadcastGameMessage("A random number between 1-10 has been chosen, use /guess <value> to guess.");
+        broadcastGameMessage("The game has started! Use /choice to choose your move!.");
 
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
         // onTurnStart(); this example doesn't use turns, all players take their
@@ -305,41 +305,12 @@ public class GameServer extends BaseGameServer {
     // start region for handle*() methods called by Server
 
     protected void handleChoice(ServerThread sender, String choice) {
-        try {
-            // ValidationUtils.requireParticipating(isActivePlayer(sender));
-            // ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
-            // guess = ValidationUtils.requireValidTurnOption(guess.trim());
-            // although validation should verify it's a number, I'll see do a try/catch just
-            // in case
-            // that way if I mistakenly change requireValidTurnOption() in the future and it
-            // stops validating properly, I have a fallback to prevent server crashes from
-            // NumberFormatException
-            // try {
-            //    int guessValue = Integer.parseInt(guess);
-            //    sender.setGuess(guessValue);
-            //    unicastGuessConfirmation(sender, guessValue);
-            // } catch (NumberFormatException e) {
-            //    LoggerUtil.INSTANCE.warning("[GameServer] Failed to parse turn action as number: " + guess);
-            //    unicastGameMessage(sender,
-            //            "Failed to parse your guess as a number. Please enter a valid number between 1 and 10.");
-            //    return;
-            // }
-            sender.setChoice(choice);
-            unicastChoiceConfirmation(sender,choice);
-
-            // keep the guess hidden from other players in this example
-            broadcastGameMessage(sender.getDisplayName() + " made a guess.");
-            // Note: technically if your action has data, turnTaken can be derived by
-            // whether or not data was recorded, but I'll keep it as a separate property for
-            // simplicity and flexibility. In a fuller project, deriving information is more
-            // efficient
-            sender.setTurnTaken(true);
-            broadcastTurnStatus(sender.getClientId(), true);
-            onTurnEnd();
-        } catch (ValidationException e) {
-            LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
-            unicastGameMessage(sender, e.getMessage());
-        }
+    sender.setChoice(choice);
+    unicastChoiceConfirmation(sender, choice);
+    broadcastGameMessage(sender.getDisplayName() + " made their choice.");
+    sender.setTurnTaken(true);
+    broadcastTurnStatus(sender.getClientId(), true);
+    onTurnEnd();
     }
 
     /**

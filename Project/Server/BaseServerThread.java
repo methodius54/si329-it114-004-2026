@@ -91,6 +91,10 @@ public abstract class BaseServerThread extends Thread {
         this.user.setChoice(choice);
     }
 
+    public boolean isEliminated() { return this.user.isEliminated(); }
+    public void setEliminated(boolean eliminated) { this.user.setEliminated(eliminated); }
+    
+
     public int getPoints() {
         return this.user.getPoints();
     }
