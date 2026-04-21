@@ -197,6 +197,8 @@ public class GameServer extends BaseGameServer {
                 }
                 else if (result < 0) {
                     defender.setPoints(defender.getPoints + 1);
+                    broadcastPlayerPoints(defender);
+                    broadcastGameMessage("test");
                 }
 
             }
