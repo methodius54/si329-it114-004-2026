@@ -95,7 +95,7 @@ public class GameServer extends BaseGameServer {
 
     @Override
     protected synchronized void onRoundStart() {
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
+        LoggerUtil.INSTANCE.info("[GameServer] onRooundStart() start");
         resetRoundTimer();
         startRoundTimer();
         phase = Phase.IN_PROGRESS;
@@ -109,7 +109,7 @@ public class GameServer extends BaseGameServer {
         }
         roundNumber++;
         broadcastGameMessage("Round " + roundNumber + " started. Use /choice <r/p/s> to make your pick. You have " + ROUND_SECONDS + "s.");        
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
+        LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
     }
 
         @Override
@@ -229,28 +229,19 @@ public class GameServer extends BaseGameServer {
         phase = Phase.INACTIVE;
 
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        // find user with highest score; they're the winner (uses stream api)
-        snapshot.stream().max((p1, p2) -> Integer.compare(p1.getPoints(), p2.getPoints())).ifPresentOrElse(winner -> {
-            broadcastGameMessage(String.format("Session ended: %s wins with %d points!", winner.getDisplayName(),
-                    winner.getPoints()));
-        }, () -> {
-            broadcastGameMessage("Session ended with no winner.");
-        });
 
-        // reset player data and sync changes to clients before clearing active players,
-        // so that clients have a chance to update any relevant UI (like ready status)
-        // before being removed from the session
-        for (ServerThread player : snapshot) {
-            player.resetGameState();
+        //note
+        List<ServerThread> remaining = new ArrayList<>();
+        for (ServerThread p : snapshot) {
+            if (!p.isEliminated()) remaining.add(p);
         }
-        // default client id is used as a reset trigger, no need to individually sync
-        // resets for each property
-        broadcastReadyStatus(Constants.DEFAULT_CLIENT_ID, false);
-        clearActivePlayers();
 
-        broadcastCurrentPhase();
-        broadcastGameMessage("Session ended. Type /ready to join the next session.");
-        LoggerUtil.INSTANCE.info("[GameServer] onSessionEnd() end");
+        if (remaining.size() == 1) {
+            broadcastGameMessage(remaining.get(0).getDisplayName() + " wins the session!");
+        }
+        else {
+            broadcastGameMessage("Session ended in a tie!");
+        }
     }
     // end region for lifecycle hook implementations
 
