@@ -299,6 +299,13 @@ public class GameServer extends BaseGameServer {
 
     // start region for handle*() methods called by Server
 
+    protected void handleAnswer(ServerThread sender, String triviaAnswer) {
+        try {
+            ValidationUtils.requireParticipating(isActivePlayer(sender));
+            ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
+        }
+    }
+
     protected void handleGuess(ServerThread sender, String guess) {
         try {
             ValidationUtils.requireParticipating(isActivePlayer(sender));

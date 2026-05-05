@@ -82,6 +82,19 @@ public enum Server {
 
     // start region for handle*() methods ===================================
 
+    protected synchronized void handleAnswer(ServerThread sender, String triviaAnswer)
+    {
+        if (!isGameServerActive()) {
+            return;
+        }
+        try {
+            gameServer.handleGuess(sender, guess);
+        }
+        catch (Exception e) {
+            LoggerUtil.INSTANCE.severe("Game server handleAnswer failed", e);
+        }
+    }
+
     protected synchronized void handleGuess(ServerThread sender, String guess) {
         if (!isGameServerActive()) {
             return;
