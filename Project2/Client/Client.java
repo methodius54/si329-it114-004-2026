@@ -1,4 +1,4 @@
-package Project2.Client;
+package Project.Client;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -11,13 +11,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import Project2.Common.ConnectionPayload;
-import Project2.Common.LoggerUtil;
-import Project2.Common.Payload;
-import Project2.Common.PayloadType;
-import Project2.Common.TextFX;
-import Project2.Common.TextFX.Color;
-import Project2.Common.User;
+import Project.Common.Constants;
+import Project.Common.ConnectionPayload;
+import Project.Common.BoolPayload;
+import Project.Common.LoggerUtil;
+import Project.Common.Payload;
+import Project.Common.PayloadType;
+import Project.Common.Phase;
+import Project.Common.PointsPayload;
+import Project.Common.TextFX;
+import Project.Common.TextFX.Color;
+import Project.Common.User;
+import Project.Common.ValidationUtils;
+import Project.Exceptions.ValidationException;
 
 /**
  * Multi-client chat client using ObjectInputStream/ObjectOutputStream.
@@ -46,6 +52,8 @@ public enum Client {
     private ConcurrentHashMap<Long, User> knownUsers = new ConcurrentHashMap<>();
     private User myUser = new User(); // this client's User object; set on successful connect when server sends client
     // id
+    private volatile Phase currentGamePhase = Phase.INACTIVE;
+    private volatile boolean isLocalValidationEnabled = true;
 
     private Client() {
         LoggerUtil.INSTANCE.info("Client Created");
@@ -105,9 +113,12 @@ public enum Client {
             case CONNECT:
                 if (isConnection(text)) {
                     String myClientName = myUser.getClientName();
-                    if (myClientName == null || myClientName.isBlank()) {
+                    try {
+                        ValidationUtils.requireNotBlank(myClientName,
+                                "Set your name before connecting using `/name YourName`");
+                    } catch (ValidationException e) {
                         LoggerUtil.INSTANCE
-                                .warning(TextFX.colorize("Set your name before connecting using `/name YourName`",
+                                .warning(TextFX.colorize(e.getMessage(),
                                         Color.YELLOW));
                         return true;
                     }
@@ -129,12 +140,14 @@ public enum Client {
             case USERS: // client-side command
                 StringBuilder sb = new StringBuilder();
                 sb.append("Known clients:\n");
-                knownUsers.forEach((key, value) -> {
-                    sb.append(TextFX.colorize(String.format("%s%s", value.getDisplayName(),
-                            key == myUser.getClientId() ? " (you)" : ""), Color.CYAN));
-                    sb.append("\n");
-                });
-                LoggerUtil.INSTANCE.info(sb.toString());
+                knownUsers.values().forEach(c -> sb.append(String.format("%s%s Ready:%s Turn:%s Points:%s Guess:%s\n",
+                        c.getDisplayName(),
+                        c.getClientId() == myUser.getClientId() ? " (you)" : "",
+                        c.isReady() ? "[x]" : "[ ]",
+                        c.isTurnTaken() ? "[x]" : "[ ]",
+                        c.getPoints(),
+                        c.getGuess() == 0 ? "[?]" : c.getGuess())));
+                LoggerUtil.INSTANCE.info(TextFX.colorize(sb.toString().trim(), Color.CYAN));
                 return true;
             case REVERSE:
                 // strip "/reverse" prefix and send remainder as the text to reverse
@@ -143,14 +156,34 @@ public enum Client {
                 return true;
             case SET_NAME:
                 String name = text.replace("/name", "").trim();
-                if (name.isBlank()) {
-                    LoggerUtil.INSTANCE.severe(TextFX.colorize("Name cannot be blank", Color.RED));
-                } else {
+                try {
+                    ValidationUtils.requireNotBlank(name, "Name cannot be blank");
                     myUser.setClientName(name);// temporarily hold client's desired name
                     // sendConnectionData() will trigger the server-side initialization flow
                     LoggerUtil.INSTANCE.info(
                             TextFX.colorize("Name set to " + name + ".", Color.GREEN));
+                } catch (ValidationException e) {
+                    LoggerUtil.INSTANCE.severe(TextFX.colorize(e.getMessage(), Color.RED));
                 }
+                return true;
+            case READY:
+                sendReady();
+                return true;
+            // @Deprecated
+            case TURN:
+                String turnAction = text.replaceFirst("/turn", "").trim();
+                sendTurn(turnAction);
+                return true;
+            case VALIDATE_CLIENT:
+                isLocalValidationEnabled = !isLocalValidationEnabled;
+                LoggerUtil.INSTANCE.info(TextFX.colorize(
+                        "Client-side validation " + (isLocalValidationEnabled ? "enabled" : "disabled"),
+                        Color.GREEN));
+                return true;
+            // example game action
+            case GUESS:
+                String guessText = text.replaceFirst("/guess", "").trim();
+                sendGuess(guessText);
                 return true;
             default:
                 return false;
@@ -158,6 +191,77 @@ public enum Client {
     }
 
     // Start region for send*() methods ===================================
+    /**
+     * Sends a guess action to the server with the user's chosen option. <br>
+     * Wraps the action in a Payload object with PayloadType.GUESS.
+     *
+     * @param action
+     * @throws IOException
+     */
+    private void sendGuess(String action) throws IOException {
+        String validatedTurnAction = action == null ? "" : action.trim();
+
+        if (isLocalValidationEnabled) {
+            try {
+                ValidationUtils.requirePhase(currentGamePhase, Phase.IN_PROGRESS);
+                ValidationUtils.requireParticipating(myUser.isReady());
+                ValidationUtils.requireTurnNotTaken(myUser.isTurnTaken());
+                validatedTurnAction = ValidationUtils.requireValidTurnOption(validatedTurnAction);
+            } catch (ValidationException e) {
+                LoggerUtil.INSTANCE.warning(TextFX.colorize(e.getMessage(), Color.YELLOW));
+                return;
+            }
+        }
+
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.GUESS);
+        payload.setMessage(validatedTurnAction);
+        sendToServer(payload);
+    }
+
+    /**
+     * Sends a ready-check action to the server.
+     */
+    private void sendReady() throws IOException {
+        if (isLocalValidationEnabled) {
+            try {
+                ValidationUtils.requirePhaseAtMost(currentGamePhase, Phase.READY);
+                ValidationUtils.requireNotAlreadyReady(myUser.isReady());
+            } catch (ValidationException e) {
+                LoggerUtil.INSTANCE.warning(TextFX.colorize(e.getMessage(), Color.YELLOW));
+                return;
+            }
+        }
+
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.READY);
+        sendToServer(payload);
+    }
+
+    /**
+     * Sends a turn action to the server.
+     */
+    @Deprecated
+    private void sendTurn(String action) throws IOException {
+        String validatedTurnAction = action == null ? "" : action.trim();
+
+        if (isLocalValidationEnabled) {
+            try {
+                ValidationUtils.requirePhase(currentGamePhase, Phase.IN_PROGRESS);
+                ValidationUtils.requireParticipating(myUser.isReady());
+                ValidationUtils.requireTurnNotTaken(myUser.isTurnTaken());
+                validatedTurnAction = ValidationUtils.requireValidTurnOption(validatedTurnAction);
+            } catch (ValidationException e) {
+                LoggerUtil.INSTANCE.warning(TextFX.colorize(e.getMessage(), Color.YELLOW));
+                return;
+            }
+        }
+
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.TURN); // updated for this specific example
+        payload.setMessage(validatedTurnAction);
+        sendToServer(payload);
+    }
 
     /**
      * Sends a client connect command to the server with this client's name. <br>
@@ -291,9 +395,24 @@ public enum Client {
             case REVERSE:
                 processReverse(payload);
                 break;
+            case GAME_PHASE_SYNC:
+                processGamePhaseSync(payload);
+                break;
+            case PLAYER_READY_STATUS:
+                processReadyStatus(payload);
+                break;
+            case PLAYER_TURN_STATUS:
+                processTurnStatus(payload);
+                break;
             case DISCONNECT: // server acknowledged this client's disconnect command; close connection
                 LoggerUtil.INSTANCE.info("Server acknowledged disconnect. Closing connection.");
                 closeServerConnection();
+                break;
+            case GUESS:
+                processGuessConfirmation(payload);
+                break;
+            case POINTS:
+                processPoints(payload);
                 break;
             default:
                 LoggerUtil.INSTANCE.warning("Received unhandled payload type: " + payload.getPayloadType());
@@ -301,6 +420,111 @@ public enum Client {
     }
 
     // Start region for process*() methods ===================================
+    private void processPoints(Payload payload) {
+        if (!(payload instanceof PointsPayload)) {
+            LoggerUtil.INSTANCE.warning("Expected PointsPayload for POINTS confirmation, got: " + payload.getClass());
+            return;
+        }
+        long clientId = payload.getClientId();
+        int points = ((PointsPayload) payload).getPoints();
+        if (clientId == Constants.DEFAULT_CLIENT_ID) {
+            // reset points trigger for all users (if needing to reset during a session)
+            knownUsers.forEach((key, user) -> user.setPoints(0));
+            LoggerUtil.INSTANCE.info(TextFX.colorize("All users' points reset", Color.YELLOW));
+            return;
+        }
+        User user = knownUsers.get(clientId);
+        if (user == null) {
+            return;
+        }
+        user.setPoints(points); // updated directly from trusted server
+        if (currentGamePhase.ordinal() >= Phase.IN_PROGRESS.ordinal()) {
+            // only print point updates during the game; before the game starts, points may
+            // be changing frequently as users ready/unready
+            LoggerUtil.INSTANCE.info(TextFX.colorize(
+                    String.format("%s now has %d points", user.getDisplayName(), points),
+                    Color.YELLOW));
+        }
+
+    }
+
+    private void processGuessConfirmation(Payload payload) {
+        if (!(payload instanceof PointsPayload)) {
+            LoggerUtil.INSTANCE.warning("Expected PointsPayload for GUESS confirmation, got: " + payload.getClass());
+            return;
+        }
+        int guess = ((PointsPayload) payload).getPoints(); // abusing the points field to receive the guess back
+        myUser.setGuess(guess); // update local state (example)
+        LoggerUtil.INSTANCE.info(TextFX.colorize("Your guess of " + guess + " has been recorded.", Color.GREEN));
+    }
+
+    private void processTurnStatus(Payload payload) {
+        if (!(payload instanceof BoolPayload)) {
+            LoggerUtil.INSTANCE.warning("Expected BoolPayload for PLAYER_TURN_STATUS, got: " + payload.getClass());
+            return;
+        }
+        BoolPayload bp = (BoolPayload) payload;
+        // uses default client id as a reset trigger
+        if (bp.getClientId() == Constants.DEFAULT_CLIENT_ID) {
+            // reset trigger for all users; update entire knownUsers cache
+            knownUsers.forEach((key, user) -> user.setTurnTaken(false));
+            LoggerUtil.INSTANCE.info(TextFX.colorize("All users' turn status reset", Color.YELLOW));
+            return;
+        }
+        User user = knownUsers.get(bp.getClientId());
+        if (user == null) {
+            return;
+        }
+        user.setTurnTaken(bp.getValue());
+        // Uncomment for debugging local state synchronization from server turn-status
+        // payloads.
+        // LoggerUtil.INSTANCE.info(TextFX.colorize(
+        // String.format("[Game] %s turnTaken=%s", user.getDisplayName(),
+        // bp.getValue()),
+        // Color.PURPLE));
+    }
+
+    private void processReadyStatus(Payload payload) {
+        if (!(payload instanceof BoolPayload)) {
+            LoggerUtil.INSTANCE.warning("Expected BoolPayload for PLAYER_READY_STATUS, got: " + payload.getClass());
+            return;
+        }
+        BoolPayload bp = (BoolPayload) payload;
+        if (bp.getClientId() == Constants.DEFAULT_CLIENT_ID) {
+            // reset trigger for all users; update entire knownUsers cache
+            // option 1: reset just the ready status
+            // knownUsers.forEach((key, user) -> user.setReady(false));
+            // option 2: reset all game-related status (cheaper)
+            knownUsers.forEach((key, user) -> user.resetGameState());
+            LoggerUtil.INSTANCE.info(TextFX.colorize("All users' ready status reset", Color.YELLOW));
+            return;
+        }
+
+        User user = knownUsers.get(bp.getClientId());
+        if (user == null) {
+            return;
+        }
+        user.setReady(bp.getValue());
+        // Uncomment for debugging local state synchronization from server ready-status
+        // payloads.
+        // LoggerUtil.INSTANCE.info(TextFX.colorize(
+        // String.format("[Game] %s ready=%s", user.getDisplayName(), bp.getValue()),
+        // Color.CYAN));
+    }
+
+    private void processGamePhaseSync(Payload payload) {
+        String phaseValue = payload.getMessage();
+        if (phaseValue == null || phaseValue.isBlank()) {
+            LoggerUtil.INSTANCE.warning("Received invalid GAME_PHASE_SYNC payload");
+            return;
+        }
+        try {
+            currentGamePhase = Phase.valueOf(phaseValue.trim().toUpperCase());
+            LoggerUtil.INSTANCE.info(TextFX.colorize("[Game] Phase: " + currentGamePhase, Color.YELLOW));
+        } catch (IllegalArgumentException e) {
+            LoggerUtil.INSTANCE.warning("Received unknown game phase: " + phaseValue);
+        }
+    }
 
     private void processReverse(Payload payload) {
         // reversed text response from server; print it with a different color
@@ -414,6 +638,7 @@ public enum Client {
     private void closeServerConnection() {
         knownUsers.clear();
         myUser.reset();
+        currentGamePhase = Phase.INACTIVE;
         try {
             if (out != null) {
                 LoggerUtil.INSTANCE.info("Closing output stream");

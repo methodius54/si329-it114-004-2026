@@ -1,14 +1,17 @@
-package Project2.Server;
+package Project.Server;
 
 import java.net.Socket;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import Project2.Common.ConnectionPayload;
-import Project2.Common.Constants;
-import Project2.Common.Payload;
-import Project2.Common.PayloadType;
-import Project2.Common.LoggerUtil;
+import Project.Common.ConnectionPayload;
+import Project.Common.Constants;
+import Project.Common.BoolPayload;
+import Project.Common.Phase;
+import Project.Common.PointsPayload;
+import Project.Common.Payload;
+import Project.Common.PayloadType;
+import Project.Common.LoggerUtil;
 
 /**
  * Server-side handler for one connected client.
@@ -61,6 +64,15 @@ public class ServerThread extends BaseServerThread {
             case REVERSE:
                 processReverse(incoming);
                 break;
+            case READY:
+                processReady(incoming);
+                break;
+            case TURN:
+                processTurn(incoming);
+                break;
+            case GUESS:
+                processGuess(incoming);
+                break;
             default:
                 info("Received unsupported payload type: " + incoming.getPayloadType());
         }
@@ -68,6 +80,21 @@ public class ServerThread extends BaseServerThread {
 
     // Region used to hand off data to Server methods for processing
     // Start region for process*() methods ===================================
+    private void processGuess(Payload incoming) {
+        info("Processing guess payload");
+        Server.INSTANCE.handleGuess(this, incoming.getMessage());
+    }
+
+    private void processTurn(Payload incoming) {
+        info("Processing turn payload");
+        Server.INSTANCE.handleTurn(this, incoming.getMessage());
+    }
+
+    private void processReady(Payload incoming) {
+        info("Processing ready payload");
+        Server.INSTANCE.handleReady(this);
+    }
+
     private void processDisconnect(Payload incoming) {
         info("Processing disconnect payload");
         Server.INSTANCE.handleDisconnect(this);
@@ -100,6 +127,51 @@ public class ServerThread extends BaseServerThread {
     // End region for process*() methods ===================================
 
     // Start region for send*() methods ===================================
+
+    protected boolean sendPlayerPoints(long clientId, int points) {
+        PointsPayload payload = new PointsPayload();
+        payload.setPayloadType(PayloadType.POINTS);
+        payload.setClientId(clientId);
+        payload.setPoints(points);
+        return sendToClient(payload);
+    }
+
+    protected boolean sendGuessConfirmation(int guess) {
+        // in this example the guess is a number, but since I want to keep the code
+        // changes minimal, I'll leverage PointsPayload to pass the confirmation back
+        // since it provides a slot for a number despite the name not making sense
+        PointsPayload payload = new PointsPayload();
+        payload.setPayloadType(PayloadType.GUESS);
+        payload.setPoints(guess); // abusing the points field to send the guess back for confirmation
+        return sendToClient(payload);
+    }
+
+    protected boolean sendTurnStatus(long clientId, boolean hasTakenTurn) {
+        BoolPayload payload = new BoolPayload();
+        payload.setPayloadType(PayloadType.PLAYER_TURN_STATUS);
+        payload.setClientId(clientId);
+        payload.setValue(hasTakenTurn);
+        return sendToClient(payload);
+    }
+
+    protected boolean sendGamePhase(Phase phase) {
+        if (phase == null) {
+            LoggerUtil.INSTANCE.severe("Attempting to send null game phase to client. This should not happen.");
+            return true; // returning true so we don't cause a disconnect event
+        }
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.GAME_PHASE_SYNC);
+        payload.setMessage(phase.name());
+        return sendToClient(payload);
+    }
+
+    protected boolean sendReadyStatus(long clientId, boolean isReady) {
+        BoolPayload payload = new BoolPayload();
+        payload.setPayloadType(PayloadType.PLAYER_READY_STATUS);
+        payload.setClientId(clientId);
+        payload.setValue(isReady);
+        return sendToClient(payload);
+    }
 
     /**
      * Sends a disconnect trigger to the client before disconnecting. This allows
@@ -159,5 +231,6 @@ public class ServerThread extends BaseServerThread {
         payload.setMessage(message);
         return sendToClient(payload);
     }
+
     // End region for send*() methods ===================================
 }

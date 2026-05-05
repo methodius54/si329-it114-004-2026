@@ -1,4 +1,4 @@
-package Project2.Client;
+package Project.Client;
 
 /**
  * Recognized client-side commands.
@@ -9,7 +9,12 @@ public enum Command {
     QUIT("/quit"),
     USERS("/users"),
     REVERSE("/reverse"),
-    SET_NAME("/name");
+    SET_NAME("/name"),
+    READY("/ready"),
+    TURN("/turn"),// @Deprecated
+    VALIDATE_CLIENT("/togglecv"), // toggle client validation (for testing server-side validations)
+    GUESS("/guess"), // example game action command
+    ;
 
     private final String trigger;
 
