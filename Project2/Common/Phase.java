@@ -1,4 +1,4 @@
-package Project.Common;
+package Project2.Common;
 
 public enum Phase {
     INACTIVE, // game session hasn't been triggered yet

@@ -1,15 +1,15 @@
-package Project.Server;
+package Project2.Server;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import Project.Common.Constants;
-import Project.Common.LoggerUtil;
-import Project.Common.Phase;
-import Project.Common.TimedEvent;
-import Project.Common.ValidationUtils;
-import Project.Exceptions.ValidationException;
+import Project2.Common.Constants;
+import Project2.Common.LoggerUtil;
+import Project2.Common.Phase;
+import Project2.Common.TimedEvent;
+import Project2.Common.ValidationUtils;
+import Project2.Exceptions.ValidationException;
 
 /**
  * Concrete game session scaffold based on the old GameRoom lifecycle.

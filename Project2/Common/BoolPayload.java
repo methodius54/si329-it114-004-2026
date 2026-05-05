@@ -1,4 +1,4 @@
-package Project.Common;
+package Project2.Common;
 
 public class BoolPayload extends Payload {
     private boolean value;

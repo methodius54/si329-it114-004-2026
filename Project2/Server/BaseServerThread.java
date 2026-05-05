@@ -1,15 +1,15 @@
-package Project.Server;
+package Project2.Server;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-import Project.Common.Payload;
-import Project.Common.TextFX;
-import Project.Common.TextFX.Color;
-import Project.Common.User;
-import Project.Common.Constants;
+import Project2.Common.Payload;
+import Project2.Common.TextFX;
+import Project2.Common.TextFX.Color;
+import Project2.Common.User;
+import Project2.Common.Constants;
 
 /**
  * Base class the handles the underlying connection between Client and

@@ -1,4 +1,4 @@
-package Project.Client;
+package Project2.Client;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -11,19 +11,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import Project.Common.Constants;
-import Project.Common.ConnectionPayload;
-import Project.Common.BoolPayload;
-import Project.Common.LoggerUtil;
-import Project.Common.Payload;
-import Project.Common.PayloadType;
-import Project.Common.Phase;
-import Project.Common.PointsPayload;
-import Project.Common.TextFX;
-import Project.Common.TextFX.Color;
-import Project.Common.User;
-import Project.Common.ValidationUtils;
-import Project.Exceptions.ValidationException;
+import Project2.Common.Constants;
+import Project2.Common.ConnectionPayload;
+import Project2.Common.BoolPayload;
+import Project2.Common.LoggerUtil;
+import Project2.Common.Payload;
+import Project2.Common.PayloadType;
+import Project2.Common.Phase;
+import Project2.Common.PointsPayload;
+import Project2.Common.TextFX;
+import Project2.Common.TextFX.Color;
+import Project2.Common.User;
+import Project2.Common.ValidationUtils;
+import Project2.Exceptions.ValidationException;
 
 /**
  * Multi-client chat client using ObjectInputStream/ObjectOutputStream.
@@ -185,12 +185,40 @@ public enum Client {
                 String guessText = text.replaceFirst("/guess", "").trim();
                 sendGuess(guessText);
                 return true;
+            case ANSWER:
+                String triviaAnswer = text.replaceFirst("/answer", "").trim();
+                sendAnswer(triviaAnswer);
+                return true;
             default:
                 return false;
         }
     }
 
     // Start region for send*() methods ===================================
+
+    private void sendAnswer(String answer) throws IOException {
+        String validatedTurnAction = answer == null ? "" : answer.trim();
+
+        if(isLocalValidationEnabled) {
+            try {
+                ValidationUtils.requirePhase(currentGamePhase, Phase.IN_PROGRESS);
+                ValidationUtils.requireParticipating(myUser.isReady());
+                ValidationUtils.requireTurnNotTaken(myUser.isTurnTaken());
+                // validatedTurnAction = ValidationUtils.requireValidTurnOption(validatedTurnAction);
+                // 
+            }
+            catch (ValidationException e) {
+                LoggerUtil.INSTANCE.warning(TextFX.colorize(e.getMessage(), Color.YELLOW));
+                return;
+            }
+
+        }
+
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.ANSWER);
+        payload.setMessage(validatedTurnAction);
+        sendToServer(payload);
+    }
     /**
      * Sends a guess action to the server with the user's chosen option. <br>
      * Wraps the action in a Payload object with PayloadType.GUESS.

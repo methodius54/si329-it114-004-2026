@@ -1,4 +1,4 @@
-package Project.Exceptions;
+package Project2.Exceptions;
 
 public class ConditionValidationException extends ValidationException {
     public ConditionValidationException(String message) {

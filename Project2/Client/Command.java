@@ -1,4 +1,4 @@
-package Project.Client;
+package Project2.Client;
 
 /**
  * Recognized client-side commands.
@@ -13,7 +13,8 @@ public enum Command {
     READY("/ready"),
     TURN("/turn"),// @Deprecated
     VALIDATE_CLIENT("/togglecv"), // toggle client validation (for testing server-side validations)
-    GUESS("/guess"), // example game action command
+    // GUESS("/guess"), // example game action command
+    ANSWER("/answer"),
     ;
 
     private final String trigger;

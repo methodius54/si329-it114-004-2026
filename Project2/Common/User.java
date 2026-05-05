@@ -1,4 +1,4 @@
-package Project.Common;
+package Project2.Common;
 
 public class User {
     private long clientId = Constants.DEFAULT_CLIENT_ID;

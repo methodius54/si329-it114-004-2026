@@ -1,13 +1,13 @@
-package Project.Common;
+package Project2.Common;
 
-import Project.Exceptions.AlreadyReadyException;
-import Project.Exceptions.BlankValidationException;
-import Project.Exceptions.ConditionValidationException;
-import Project.Exceptions.DuplicateTurnChoiceException;
-import Project.Exceptions.InvalidGamePhaseException;
-import Project.Exceptions.InvalidTurnOptionException;
-import Project.Exceptions.NullValidationException;
-import Project.Exceptions.PlayerNotParticipatingException;
+import Project2.Exceptions.AlreadyReadyException;
+import Project2.Exceptions.BlankValidationException;
+import Project2.Exceptions.ConditionValidationException;
+import Project2.Exceptions.DuplicateTurnChoiceException;
+import Project2.Exceptions.InvalidGamePhaseException;
+import Project2.Exceptions.InvalidTurnOptionException;
+import Project2.Exceptions.NullValidationException;
+import Project2.Exceptions.PlayerNotParticipatingException;
 
 public final class ValidationUtils {
 

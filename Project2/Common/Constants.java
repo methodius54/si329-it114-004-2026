@@ -1,4 +1,4 @@
-package Project.Common;
+package Project2.Common;
 
 public abstract class Constants {
     public static final long DEFAULT_CLIENT_ID = -1L;

@@ -1,4 +1,4 @@
-package Project.Exceptions;
+package Project2.Exceptions;
 
 public class BlankValidationException extends ValidationException {
     public BlankValidationException(String message) {

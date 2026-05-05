@@ -1,4 +1,4 @@
-package Project.Exceptions;
+package Project2.Exceptions;
 
 public class InvalidGamePhaseException extends ValidationException {
     public InvalidGamePhaseException(String message) {

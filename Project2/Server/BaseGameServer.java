@@ -1,10 +1,10 @@
-package Project.Server;
+package Project2.Server;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 
-import Project.Common.LoggerUtil;
+import Project2.Common.LoggerUtil;
 
 /**
  * Abstract base class for game session logic. Owns player membership and

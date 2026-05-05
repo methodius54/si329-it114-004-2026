@@ -1,4 +1,4 @@
-package Project.Server;
+package Project2.Server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import Project.Common.LoggerUtil;
+import Project2.Common.LoggerUtil;
 
 public enum Server {
     INSTANCE; // Singleton instance
