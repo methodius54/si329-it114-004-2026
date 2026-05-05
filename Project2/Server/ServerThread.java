@@ -1,14 +1,14 @@
-package Project.Server;
+package Project2.Server;
 
 import java.net.Socket;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import Project.Common.ConnectionPayload;
-import Project.Common.Constants;
-import Project.Common.Payload;
-import Project.Common.PayloadType;
-import Project.Common.LoggerUtil;
+import Project2.Common.ConnectionPayload;
+import Project2.Common.Constants;
+import Project2.Common.Payload;
+import Project2.Common.PayloadType;
+import Project2.Common.LoggerUtil;
 
 /**
  * Server-side handler for one connected client.

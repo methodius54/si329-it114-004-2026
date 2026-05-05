@@ -1,4 +1,4 @@
-package Project.Server;
+package Project2.Server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import Project.Common.LoggerUtil;
-import Project.Common.TextFX;
-import Project.Common.TextFX.Color;
+import Project2.Common.LoggerUtil;
+import Project2.Common.TextFX;
+import Project2.Common.TextFX.Color;
 
 public enum Server {
     INSTANCE; // Singleton instance

@@ -1,4 +1,4 @@
-package Project.Client;
+package Project2.Client;
 
 /**
  * Recognized client-side commands.

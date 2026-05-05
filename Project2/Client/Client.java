@@ -1,4 +1,4 @@
-package Project.Client;
+package Project2.Client;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -11,13 +11,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import Project.Common.ConnectionPayload;
-import Project.Common.LoggerUtil;
-import Project.Common.Payload;
-import Project.Common.PayloadType;
-import Project.Common.TextFX;
-import Project.Common.TextFX.Color;
-import Project.Common.User;
+import Project2.Common.ConnectionPayload;
+import Project2.Common.LoggerUtil;
+import Project2.Common.Payload;
+import Project2.Common.PayloadType;
+import Project2.Common.TextFX;
+import Project2.Common.TextFX.Color;
+import Project2.Common.User;
 
 /**
  * Multi-client chat client using ObjectInputStream/ObjectOutputStream.
