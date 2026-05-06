@@ -3,6 +3,9 @@ package Project2.Server;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 
 import Project2.Common.Constants;
 import Project2.Common.LoggerUtil;
@@ -34,6 +37,11 @@ public class GameServer extends BaseGameServer {
     private int roundNumber = 0;
     // example data
     private int hiddenNumber = 0;
+    // question data
+    private List<Question> questions = new ArrayList<>();
+    private Question currentQuestion = null;
+    private static final String QUESTIONS_FILE = "questions.txt";
+    private static final int TOTAL_ROUNDS = 3;
 
     // start region for lifecycle hook implementations
     @Override
@@ -421,6 +429,36 @@ public class GameServer extends BaseGameServer {
 
     // start region for helper methods to send data to clients
 
+    // This method is a little strange. I wasn't sure how you'd want us to *load* the questions, and in what format we should store the questions because I was originally on RPS
+    private void loadQuestions() {
+        questions.clear();
+        try (Buffered reader = new BufferedReader(new FileReader(QUESTION_FILE))) {
+            String line;
+            while((line = reader.readLine()) != null) {
+                if (line.isBlank() || line.startsWith("#")) {
+                    continue;
+                }
+                String[] parts = line.split("\\|");
+                if (parts.length != 7) {
+                    LoggerUtil.Instance.warning("malformed question line skipping: " + line);
+                    continue;
+                }
+                String category = parts[0].trim();
+                String questionText = parts[1].trim();
+                List<String> options = new ArrayList<>();
+                options.add("A) " + parts[2].trim());
+                options.add("B) " + parts[3].trim());
+                options.add("C) " + parts[4].trim());
+                options.add("D) " + parts[5].trim());
+                String correctAnswer = parts[6].trim().toUpperCase();
+                questions.add(new Question(questionText, category, options, correctAnswer));
+                }
+                LoggerUtil.INSTANCE.info("GameServer Loaded " + questions.size() + " questions.");
+        }
+        catch (IOException e) {
+        LoggerUtil.INSTANCE.severe("GameServer Failed to load questions file: " + e.getMessage());
+        }
+        }
     private void broadcastPointsReset() { // optional reset for specific property, but we'll leverage the READY reset as
                                           // a full reset for simplicity in this example
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendPlayerPoints(Constants.DEFAULT_CLIENT_ID, 0));
