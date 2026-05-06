@@ -1,31 +1,41 @@
 package Project2.Common;
 
-public class PointsPayload extends Payload {
-    private int points;
+import java.util.List;
 
-    public PointsPayload() {
-        // Some Payloads will always/generally have the same type
-        // so we can set it in the constructor to reduce repeated code when creating the
-        // payload
-        setPayloadType(PayloadType.POINTS);
+public class QAPayload extends Payload {
+    private String question;
+    private String category;
+    private List<String> options;
+
+    public QAPayload() {
+        setPayloadType(PayloadType.QUESTION);
     }
 
-    public PointsPayload(int points) {
-        super(); // call default constructor to set payload type
-        this.points = points;
+    public String getQuestion() {
+        return question;
     }
 
-    public int getPoints() {
-        return points;
+    public void setQuestion(String question) {
+        this.question = question;
     }
 
-    public void setPoints(int points) {
-        this.points = points;
+    public String getCategory() {
+        return category;
     }
 
-    @Override
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public void setOptions(List<String> options) {
+        this.options = options;
+    }
+    
+    public List<String> getOptions() {
+        return this.options;
+        }
+
     public String toString() {
-        return super.toString() + String.format(" Points [=%d]",
-                points);
+        return super.toString() + String.format(" Category [%s] Question [%s] Options[%s]", category, question, options);
     }
 }
