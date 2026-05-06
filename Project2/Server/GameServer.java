@@ -306,6 +306,7 @@ public class GameServer extends BaseGameServer {
             triviaAnswer = ValidationUtils.requireValidTurnOption(triviaAnswer.trim());
 
             sender.setAnswer(triviaAnswer);
+            broadcastCurrentAnswer(sender);
 
             sender.setTurnTaken(true);
             broadcastTurnStatus(sender.getClientId(), true);
@@ -477,6 +478,10 @@ public class GameServer extends BaseGameServer {
     /** Notifies all connected clients of a player's ready status. */
     private void broadcastReadyStatus(long clientId, boolean isReady) {
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendReadyStatus(clientId, isReady));
+    }
+
+    private void broadcastCorrectAnswer(String correctAnswer) {
+        broadcastGameMessage("The correct answer was: " + correctAnswer);
     }
 
     /** Sends a player's ready status to a single client. */

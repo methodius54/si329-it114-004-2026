@@ -95,6 +95,14 @@ public abstract class BaseServerThread extends Thread {
         return this.user.getPoints();
     }
 
+    public String getAnswer() {
+        return this.user.getAnswer();
+    }
+
+    public void setAnswer(String answer) {
+        this.user.setAnswer(answer);
+    }
+
     public void setPoints(int points) {
         this.user.setPoints(points);
     }
