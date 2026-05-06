@@ -12,6 +12,7 @@ import Project2.Common.PointsPayload;
 import Project2.Common.Payload;
 import Project2.Common.PayloadType;
 import Project2.Common.LoggerUtil;
+import Project2.Common.QAPayload;
 
 /**
  * Server-side handler for one connected client.
@@ -73,6 +74,10 @@ public class ServerThread extends BaseServerThread {
             case GUESS:
                 processGuess(incoming);
                 break;
+            case ANSWER:
+                processAnswer(incoming);
+                break;
+            
             default:
                 info("Received unsupported payload type: " + incoming.getPayloadType());
         }
@@ -80,6 +85,11 @@ public class ServerThread extends BaseServerThread {
 
     // Region used to hand off data to Server methods for processing
     // Start region for process*() methods ===================================
+    private void processAnswer(Payload incoming) 
+    {
+        info("Processing answer payload.");
+        Server.INSTANCE.handleAnswer(this, incoming.getMessage());
+    }
     private void processGuess(Payload incoming) {
         info("Processing guess payload");
         Server.INSTANCE.handleGuess(this, incoming.getMessage());
@@ -127,6 +137,10 @@ public class ServerThread extends BaseServerThread {
     // End region for process*() methods ===================================
 
     // Start region for send*() methods ===================================
+
+    protected boolean sendQuestion(QAPayload payload) {
+        return sendToClient(payload);
+    }
 
     protected boolean sendPlayerPoints(long clientId, int points) {
         PointsPayload payload = new PointsPayload();

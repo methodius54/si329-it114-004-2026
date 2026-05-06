@@ -21,7 +21,7 @@ public class User {
         return answer;
     }
 
-    public String setAnswer(String answer) {
+    public void setAnswer(String answer) {
         this.answer = answer;
     }
 

@@ -22,4 +22,5 @@ public enum PayloadType {
     GUESS, // Used by client to send guess and server to confirm guess was received
     // ---------
     ANSWER, // Used by a client to send the answer, as well as server to confirm the guess, similar to the guess structure.
+    QUESTION, // used to send the question down to the client
 }

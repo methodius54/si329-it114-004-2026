@@ -28,6 +28,7 @@ public class GameServer extends BaseGameServer {
     private static final int ROUND_SECONDS = 30;
     private static final int TURN_SECONDS = 20;
     private static final String GAME_TAG = "[Game] ";
+    private List<ServerThread> correctResponders = new ArrayList<>();
 
     private volatile Phase phase = Phase.INACTIVE;
     private volatile TimedEvent readyTimer;
@@ -133,6 +134,8 @@ public class GameServer extends BaseGameServer {
         qa.setOptions(currentQuestion.getOptions());
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendQuestion(qa));
 
+        correctResponders.clear();
+
         startRoundTimer();
         broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
@@ -181,8 +184,6 @@ public class GameServer extends BaseGameServer {
     @Override
     protected synchronized void onRoundEnd() {
         LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() start");
-        // prevent potential multiple calls to onRoundEnd() from both turn timer
-        // expiring and all players taking their turn
         if (phase == Phase.EVALUATION) {
             LoggerUtil.INSTANCE.info("[GameServer] Already in evaluation phase, skipping redundant onRoundEnd() call");
             return;
@@ -191,34 +192,28 @@ public class GameServer extends BaseGameServer {
         broadcastCurrentPhase();
         resetRoundTimer();
         broadcastGameMessage("Round ended.");
+        broadcastCorrectAnswer(currentQuestion.getCorrectAnswer());
 
-        // example process round end logic; everyone gains a point for a correct guess
-        broadcastGameMessage("Evaluating guesses... The correct number was " + hiddenNumber);
-        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        for (ServerThread player : snapshot) {
-            if (player.getGuess() == hiddenNumber) {
-                player.setPoints(player.getPoints() + 1);
-                // sync points to all
-                broadcastPlayerPoints(player);
-                // feedback
-                broadcastGameMessage(
-                        String.format("%s guessed correctly and gained a point!", player.getDisplayName()));
-                // can reset guess here
-                player.setGuess(0);
-            } else {
-                unicastGameMessage(player, "Your guess was incorrect.");
-            }
+        int numCorrect = correctResponders.size();
+        for (int i = 0; i < numCorrect; i++) {
+            ServerThread player = correctResponders.get(i);
+            int pointsAwarded = Math.max(1, 10 - (i * (9 / Math.max(1, numCorrect - 1))));
+            player.setPoints(player.getPoints() + pointsAwarded);
+            broadcastPlayerPoints(player);
+            broadcastGameMessage(String.format("%s answered correctly and was awarded %s points", player.getDisplayName(), pointsAwarded));
         }
+        getActivePlayers().stream()
+            .sorted((p1, p2) -> Integer.compare(p2.getPoints(), p1.getPoints()))
+            .forEach(player -> broadcastGameMessage(
+                    String.format("%s: %d points", player.getDisplayName(), player.getPoints())));
 
-        LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
-        // TODO: add logic to determine if session should end or next round should
+    LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
 
-        if (roundNumber >= 5) { // arbitrary end condition for example purposes
-            onSessionEnd();
-        } else {
-            onRoundStart();
-        }
-        // onSessionEnd();
+    if (roundNumber >= TOTAL_ROUNDS || questions.isEmpty()) {
+        onSessionEnd();
+    } else {
+        onRoundStart();
+    }
     }
 
     @Override
@@ -229,25 +224,30 @@ public class GameServer extends BaseGameServer {
         resetRoundTimer();
 
         currentTurnPlayerId = null;
+        currentQuestion = null;
+        correctResponders.clear();
+        questions.clear();
         phase = Phase.INACTIVE;
 
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        // find user with highest score; they're the winner (uses stream api)
-        snapshot.stream().max((p1, p2) -> Integer.compare(p1.getPoints(), p2.getPoints())).ifPresentOrElse(winner -> {
-            broadcastGameMessage(String.format("Session ended: %s wins with %d points!", winner.getDisplayName(),
-                    winner.getPoints()));
-        }, () -> {
-            broadcastGameMessage("Session ended with no winner.");
-        });
+        broadcastGameMessage("=== Final Scoreboard ===");
+        snapshot.stream()
+            .sorted((p1, p2) -> Integer.compare(p2.getPoints(), p1.getPoints()))
+            .forEach(player -> broadcastGameMessage(
+                    String.format("%s: %d points", player.getDisplayName(), player.getPoints())));
 
-        // reset player data and sync changes to clients before clearing active players,
-        // so that clients have a chance to update any relevant UI (like ready status)
-        // before being removed from the session
+    snapshot.stream()
+            .max((p1, p2) -> Integer.compare(p1.getPoints(), p2.getPoints()))
+            .ifPresentOrElse(winner -> {
+                broadcastGameMessage(String.format("Game over! %s wins with %d points!",
+                        winner.getDisplayName(), winner.getPoints()));
+            }, () -> {
+                broadcastGameMessage("Game over! No winner.");
+            });
+
         for (ServerThread player : snapshot) {
             player.resetGameState();
         }
-        // default client id is used as a reset trigger, no need to individually sync
-        // resets for each property
         broadcastReadyStatus(Constants.DEFAULT_CLIENT_ID, false);
         clearActivePlayers();
 
@@ -331,6 +331,10 @@ public class GameServer extends BaseGameServer {
 
             sender.setTurnTaken(true);
             broadcastTurnStatus(sender.getClientId(), true);
+
+            if (triviaAnswer.equalsIgnoreCase(currentQuestion.getCorrectAnswer())) {
+                correctResponders.add(sender);
+            }
 
             boolean allAnswered = getActivePlayers().stream().allMatch(ServerThread::isTurnTaken);
             if (allAnswered) {
