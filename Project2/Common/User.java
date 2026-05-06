@@ -7,6 +7,7 @@ public class User {
     private boolean turnTaken;
     private int guess = 0;// example user data
     private int points = 0;
+    private String answer;
 
     public User() {
     }
@@ -14,6 +15,14 @@ public class User {
     public User(long clientId, String clientName) {
         this.clientId = clientId;
         this.clientName = clientName;
+    }
+
+    public String getAnswer() {
+        return answer;
+    }
+
+    public String setAnswer(String answer) {
+        this.answer = answer;
     }
 
     /**
@@ -97,6 +106,7 @@ public class User {
         this.turnTaken = false;
         this.guess = 0; // example user data
         this.points = 0;
+        this.answer = null;
     }
 
     public void reset() {

@@ -88,7 +88,7 @@ public enum Server {
             return;
         }
         try {
-            gameServer.handleGuess(sender, guess);
+            gameServer.handleAnswer(sender, triviaAnswer);
         }
         catch (Exception e) {
             LoggerUtil.INSTANCE.severe("Game server handleAnswer failed", e);
