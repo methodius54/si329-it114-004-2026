@@ -13,6 +13,8 @@ import Project2.Common.Phase;
 import Project2.Common.TimedEvent;
 import Project2.Common.ValidationUtils;
 import Project2.Exceptions.ValidationException;
+import Project2.Common.QAPayload;
+import Project2.Common.Question;
 
 /**
  * Concrete game session scaffold based on the old GameRoom lifecycle.
@@ -121,7 +123,7 @@ public class GameServer extends BaseGameServer {
         for (ServerThread player : getActivePlayers()) {
             player.setAnswer(null);
             player.setTurnTaken(false);
-            broadcastTurnStatus(player.getClientID(), false);
+            broadcastTurnStatus(player.getClientId(), false);
         }
 
         roundNumber++;
@@ -327,7 +329,7 @@ public class GameServer extends BaseGameServer {
             triviaAnswer = ValidationUtils.requireValidTurnOption(triviaAnswer.trim());
 
             sender.setAnswer(triviaAnswer);
-            broadcastCurrentAnswer(sender);
+            broadcastGameMessage(sender.getDisplay() + " locked in their answer.");
 
             sender.setTurnTaken(true);
             broadcastTurnStatus(sender.getClientId(), true);
@@ -449,7 +451,7 @@ public class GameServer extends BaseGameServer {
     // This method is a little strange. I wasn't sure how you'd want us to *load* the questions, and in what format we should store the questions because I was originally on RPS
     private void loadQuestions() {
         questions.clear();
-        try (Buffered reader = new BufferedReader(new FileReader(QUESTION_FILE))) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(QUESTIONS_FILE))) {
             String line;
             while((line = reader.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("#")) {
@@ -457,7 +459,7 @@ public class GameServer extends BaseGameServer {
                 }
                 String[] parts = line.split("\\|");
                 if (parts.length != 7) {
-                    LoggerUtil.Instance.warning("malformed question line skipping: " + line);
+                    LoggerUtil.INSTANCE.warning("malformed question line skipping: " + line);
                     continue;
                 }
                 String category = parts[0].trim();
