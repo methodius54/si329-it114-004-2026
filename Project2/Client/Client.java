@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.List;
 
 import Project2.Common.Constants;
 import Project2.Common.ConnectionPayload;
@@ -19,12 +20,12 @@ import Project2.Common.Payload;
 import Project2.Common.PayloadType;
 import Project2.Common.Phase;
 import Project2.Common.PointsPayload;
+import Project2.Common.QAPayload;
 import Project2.Common.TextFX;
 import Project2.Common.TextFX.Color;
 import Project2.Common.User;
 import Project2.Common.ValidationUtils;
 import Project2.Exceptions.ValidationException;
-
 /**
  * Multi-client chat client using ObjectInputStream/ObjectOutputStream.
  */
@@ -441,12 +442,16 @@ public enum Client {
             case POINTS:
                 processPoints(payload);
                 break;
+            case QUESTION:
+                processQuestion(payload);
+                break;
             default:
                 LoggerUtil.INSTANCE.warning("Received unhandled payload type: " + payload.getPayloadType());
         }
     }
 
     // Start region for process*() methods ===================================
+
     private void processPoints(Payload payload) {
         if (!(payload instanceof PointsPayload)) {
             LoggerUtil.INSTANCE.warning("Expected PointsPayload for POINTS confirmation, got: " + payload.getClass());
@@ -473,6 +478,23 @@ public enum Client {
                     Color.YELLOW));
         }
 
+    }
+
+    private void processQuestion(Payload payload) {
+        if (!(payload instanceof QAPayload)) {
+            LoggerUtil.INSTANCE.warning("Expected QAPayloadfor QUESTION confirmation, got: " + payload.getClass());
+            return;
+        }
+        QAPayload qa = (QAPayload) payload;
+        StringBuilder  sb = new StringBuilder();
+        sb.append(String.format("\n[Category: %s]\n", qa.getCategory()));
+        sb.append(String.format("\n[Question: %s]\n", qa.getQuestion()));
+        List<String> options = qa.getOptions();
+        for (int i = 0; i < options.size(); i++) {
+            sb.append(String.format("%s\n", options.get(i)));
+        }
+
+        LoggerUtil.INSTANCE.info(TextFX.colorize(sb.toString(), Color.CYAN));
     }
 
     private void processGuessConfirmation(Payload payload) {
