@@ -134,9 +134,12 @@ public final class ValidationUtils {
             throw new ConditionValidationException(errorMessage);
         }
     }
+    public static String requireValidTurnOption(String value) throws InvalidTurnOptionException {
+        return requireValidTurnOption(value, DEFAULT_TURN_OPTION_MESSAGE);
+    }
 
     public static String requireValidTurnOption(String value, String errorMessage) throws InvalidTurnOptionException {
-        String normalized = value = null ? "" : value.trim().toUpperCase();
+        String normalized = value == null ? "" : value.trim().toUpperCase();
         if (!normalized.equals("A") && !normalized.equals("B") && !normalized.equals("C") && !normalized.equals("D")) {
             throw new InvalidTurnOptionException("Please enter a valid answer choice, (A,B,C or D)");
         }

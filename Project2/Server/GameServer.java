@@ -43,7 +43,7 @@ public class GameServer extends BaseGameServer {
     // question data
     private List<Question> questions = new ArrayList<>();
     private Question currentQuestion = null;
-    private static final String QUESTIONS_FILE = "questions.txt";
+    private static final String QUESTIONS_FILE = "Project2/questions.txt";
     private static final int TOTAL_ROUNDS = 3;
 
     // start region for lifecycle hook implementations
