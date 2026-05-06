@@ -181,11 +181,6 @@ public enum Client {
                         "Client-side validation " + (isLocalValidationEnabled ? "enabled" : "disabled"),
                         Color.GREEN));
                 return true;
-            // example game action
-            case GUESS:
-                String guessText = text.replaceFirst("/guess", "").trim();
-                sendGuess(guessText);
-                return true;
             case ANSWER:
                 String triviaAnswer = text.replaceFirst("/answer", "").trim();
                 sendAnswer(triviaAnswer);
