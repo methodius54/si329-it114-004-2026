@@ -95,7 +95,13 @@ public class GameServer extends BaseGameServer {
 
     @Override
     protected synchronized void onSessionStart() {
-        LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() start");
+    LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() start");
+        loadQuestions();
+        if (questions.isEmpty()) {
+            broadcastGameMessage("Failed to load questions. Session cannot start.");
+            onSessionEnd();
+            return;
+        }
         resetReadyTimer();
         roundNumber = 0;
         broadcastGameMessage("Session started.");
@@ -107,22 +113,29 @@ public class GameServer extends BaseGameServer {
     protected synchronized void onRoundStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() start");
         resetRoundTimer();
-        startRoundTimer();
-        phase = Phase.IN_PROGRESS; // toggle from READY or EVALUATION
-        broadcastCurrentPhase();
-        for (ServerThread player : getActivePlayers()) {
-            player.setTurnTaken(false);
-            broadcastTurnStatus(player.getClientId(), false);
-        }
-        roundNumber++; // TODO: future lessons may sync this as number later for better UI visibility
-        broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
-        // example round setup
-        hiddenNumber = new Random().nextInt(10) + 1;
-        broadcastGameMessage("A random number between 1-10 has been chosen, use /guess <value> to guess.");
 
+        int randomIndex = new Random().nextInt(questions.size());
+        currentQuestion = questions.remove(randomIndex);
+
+        for (ServerThread player : getActivePlayers()) {
+            player.setAnswer(null);
+            player.setTurnTaken(false);
+            broadcastTurnStatus(player.getClientID(), false);
+        }
+
+        roundNumber++;
+        phase = Phase.IN_PROGRESS;
+        broadcastCurrentPhase();
+
+        QAPayload qa = new QAPayload();
+        qa.setCategory(currentQuestion.getCategory());
+        qa.setQuestion(currentQuestion.getQuestion());
+        qa.setOptions(currentQuestion.getOptions());
+        Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendQuestion(qa));
+
+        startRoundTimer();
+        broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
-        // onTurnStart(); this example doesn't use turns, all players take their
-        // turn simultaneously within the round time limit
     }
 
     @Override
