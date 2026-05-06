@@ -329,7 +329,7 @@ public class GameServer extends BaseGameServer {
             triviaAnswer = ValidationUtils.requireValidTurnOption(triviaAnswer.trim());
 
             sender.setAnswer(triviaAnswer);
-            broadcastGameMessage(sender.getDisplay() + " locked in their answer.");
+            broadcastGameMessage(sender.getDisplayName() + " locked in their answer.");
 
             sender.setTurnTaken(true);
             broadcastTurnStatus(sender.getClientId(), true);
