@@ -29,6 +29,13 @@ import Project2UI.Client.Interfaces.IPlayerStatusEvents;
 import Project2UI.Common.Constants;
 import Project2UI.Common.ConnectionPayload;
 import Project2UI.Common.BoolPayload;
+import Project2UI.Common.CardActionPayload;
+import Project2UI.Common.Card;
+import Project2UI.Common.CardCatalogPayload;
+import Project2UI.Common.CardHandPayload;
+import Project2UI.Common.Grid;
+import Project2UI.Common.GridCellPayload;
+import Project2UI.Common.GridSeedPayload;
 import Project2UI.Common.LoggerUtil;
 import Project2UI.Common.Payload;
 import Project2UI.Common.PayloadType;
@@ -71,6 +78,8 @@ public enum Client implements IClientCommands {
     // id
     private volatile Phase currentGamePhase = Phase.INACTIVE;
     private volatile boolean isLocalValidationEnabled = true;
+    private volatile Grid localGrid;
+    private volatile long localGridSeed = 0L;
     private volatile long currentTurnClientId = Constants.DEFAULT_CLIENT_ID;
     private final List<IClientEvents> uiCallbacks = new CopyOnWriteArrayList<>();
     // Client-side card catalog: id -> Card data.

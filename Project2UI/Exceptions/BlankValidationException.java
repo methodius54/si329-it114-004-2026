@@ -1,0 +1,7 @@
+package Project2UI2.Exceptions;
+
+public class BlankValidationException extends ValidationException {
+    public BlankValidationException(String message) {
+        super(message);
+    }
+}
