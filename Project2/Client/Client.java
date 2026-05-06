@@ -203,7 +203,6 @@ public enum Client {
             try {
                 ValidationUtils.requirePhase(currentGamePhase, Phase.IN_PROGRESS);
                 ValidationUtils.requireParticipating(myUser.isReady());
-                ValidationUtils.requireTurnNotTaken(myUser.isTurnTaken());
                 // validatedTurnAction = ValidationUtils.requireValidTurnOption(validatedTurnAction);
                 // 
             }

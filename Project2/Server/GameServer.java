@@ -303,6 +303,21 @@ public class GameServer extends BaseGameServer {
         try {
             ValidationUtils.requireParticipating(isActivePlayer(sender));
             ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
+            triviaAnswer = ValidationUtils.requireValidTurnOption(triviaAnswer.trim());
+
+            sender.setAnswer(triviaAnswer);
+
+            sender.setTurnTaken(true);
+            broadcastTurnStatus(sender.getClientId(), true);
+
+            boolean allAnswered = getActivePlayers().stream().allMatch(ServerThread::isTurnTaken);
+            if (allAnswered) {
+                onRoundEnd();
+            }
+        }
+        catch(ValidationException e) {
+            LoggerUtil.INSTANCE.warning("[Game Server] " + e.getMessage());
+            unicastGameMessage(sender, e.getMessage());
         }
     }
 
