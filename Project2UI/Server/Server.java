@@ -107,21 +107,6 @@ public enum Server {
     }
 
     /**
-     * Passes user's turn action to the game session
-     */
-    @Deprecated
-    protected synchronized void handleTurn(ServerThread sender, String action) {
-        if (!isGameServerActive()) {
-            return;
-        }
-        try {
-            gameServer.handleTurn(sender, action);
-        } catch (Exception e) {
-            LoggerUtil.INSTANCE.severe("Game server handleTurn failed", e);
-        }
-    }
-
-    /**
      * Passes user's intent to join the game session to the game session
      */
     protected synchronized void handleReady(ServerThread sender) {

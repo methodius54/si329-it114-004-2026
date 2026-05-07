@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import javax.smartcardio.Card;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -27,7 +25,6 @@ public class GameServer extends BaseGameServer {
     private static final int MIN_PLAYERS_TO_START = 2;
     private static final int READY_SECONDS = 30;
     private static final int ROUND_SECONDS = 30;
-    private static final int TURN_SECONDS = 20;
     private static final int EVALUATION_SECONDS = 5;
     private static final String GAME_TAG = "[Game] ";
     private List<ServerThread> correctResponders = new ArrayList<>();
@@ -146,58 +143,15 @@ public class GameServer extends BaseGameServer {
         startRoundTimer();
         broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
-        onTurnStart(); // this example users onTurnStart() for individual turn pacing
     }
 
     @Override
     protected synchronized void onTurnStart() {
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
-        resetTurnTimer();
-
-        if (getActivePlayers().isEmpty()) {
-            onSessionEnd();
-            return;
-        }
-
-        ServerThread currentPlayer = findNextTurnPlayer();
-
-        if (currentPlayer == null) {
-            // If no non-away players are eligible, end the round to avoid stalling turn
-            // progression.
-            LoggerUtil.INSTANCE.info("[GameServer] No eligible non-away player found for turn start. Ending round.");
-            onRoundEnd();
-            return;
-        }
-
-        currentTurnPlayerId = currentPlayer.getClientId();
-        startTurnTimer();
-        broadcastGameMessage("Turn started for " + chosen.getDisplayName() + ". Use /turn <action> within "
-                + TURN_SECONDS + "s.");
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() end");
     }
 
     @Override
     protected synchronized void onTurnEnd() {
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnEnd() start");
-        resetTurnTimer();
-        currentTurnPlayerId = null;
-        LoggerUtil.INSTANCE.info("[GameServer] onTurnEnd() end");
-        // onRoundEnd(); this example doesn't use turns, but this hook is called at the
-        // end of handleTurn() and we don't want it to end the round
-
-        // if all players have taken their turn, enter onRoundEnd() early instead of
-        // waiting for the turn timer to expire
-        boolean allTaken = getActivePlayers().stream().allMatch(ServerThread::isTurnTaken);
-            if (allTaken) {
-                // NOTE: be careful to not have two closely timed flows both call onRoundEnd()
-                // simultaneously
-                onRoundEnd();
-            } 
-            else {
-                // Start the next turn after the same transition delay.
-                onTurnStart();
-            }
-        };
+        }
 
     @Override
     protected synchronized void onRoundEnd() {
@@ -239,7 +193,6 @@ public class GameServer extends BaseGameServer {
         LoggerUtil.INSTANCE.info("[GameServer] onSessionEnd() start");
         resetReadyTimer();
         resetEvaluationTimer();
-        resetTurnTimer();
         resetRoundTimer();
 
         currentTurnPlayerId = null;
@@ -355,19 +308,20 @@ public class GameServer extends BaseGameServer {
         }
     }
 
-    private synchronized void startTurnTimer() {
-        turnTimer = new TimedEvent(TURN_SECONDS, this::onTurnEnd);
-        turnTimer.setTickCallback(time -> {
+    private synchronized void startEvaluationTimer(List<ServerThread> snapshot) {
+        resetEvaluationTimer();
+        evaluationTimer = new TimedEvent(EVALUATION_SECONDS, () -> doSessionReset(snapshot));
+        evaluationTimer.setTickCallback(time -> {
             int clampedTime = Math.max(0, time);
-            LoggerUtil.INSTANCE.info("[GameServer] Turn timer: " + clampedTime);
-            broadcastGameTimer(TimerType.TURN, clampedTime);
+            LoggerUtil.INSTANCE.info("[GameServer] Evaluation timer: " + clampedTime);
+            broadcastGameTimer(TimerType.EVALUATION, clampedTime);
         });
     }
 
-    private synchronized void resetTurnTimer() {
-        if (turnTimer != null) {
-            turnTimer.cancel();
-            turnTimer = null;
+    private synchronized void resetEvaluationTimer() {
+        if (evaluationTimer != null) {
+            evaluationTimer.cancel();
+            evaluationTimer = null;
         }
     }
 
@@ -610,6 +564,16 @@ public class GameServer extends BaseGameServer {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendReadyStatus(clientId, isReady));
     }
 
+    /** Notifies all connected clients of a player's away status. */
+    private void broadcastAwayStatus(long clientId, boolean isAway) {
+        Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendAwayStatus(clientId, isAway));
+    }
+
+    /** Sends a player's away status to a single client. */
+    private void unicastAwayStatus(ServerThread target, long clientId, boolean isAway) {
+        Server.INSTANCE.unicast(target, serverThread -> serverThread.sendAwayStatus(clientId, isAway));
+    }
+
     /** Notifies all connected clients of a player's turn-taken status. */
     private void broadcastTurnStatus(long clientId, boolean hasTakenTurn) {
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendTurnStatus(clientId, hasTakenTurn));
@@ -639,6 +603,10 @@ public class GameServer extends BaseGameServer {
         }
         final String formatted = GAME_TAG + message;
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendMessage(formatted));
+    }
+
+    private void broadcastGameTimer(TimerType timerType, int secondsRemaining) {
+        Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendGameTimer(timerType, secondsRemaining));
     }
 
     // end region for helper methods to send data to clients

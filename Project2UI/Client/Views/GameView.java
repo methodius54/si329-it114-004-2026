@@ -36,7 +36,7 @@ import Project2UI.Exceptions.ValidationException;
 /**
  * Main gameplay panel that shows phase-aware status, cards, grid actions, and game events.
  */
-public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents, IPlayerStatusEvents, IGameFlowEvents, IGameTimerEvents, IGameQuestionEvents {
+public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents, IPlayerStatusEvents, IGameFlowEvents, IGameQuestionEvents {
     
     private final Client client;
     private final JLabel statusLabel = new JLabel("Connect to the server to receive game data.");

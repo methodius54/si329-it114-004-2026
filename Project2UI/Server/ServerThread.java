@@ -13,6 +13,8 @@ import Project2UI.Common.Payload;
 import Project2UI.Common.PayloadType;
 import Project2UI.Common.LoggerUtil;
 import Project2UI.Common.QAPayload;
+import Project2UI.Common.TimerPayload;
+import Project2UI.Common.TimerType;
 
 /**
  * Server-side handler for one connected client.
@@ -68,9 +70,6 @@ public class ServerThread extends BaseServerThread {
             case READY:
                 processReady(incoming);
                 break;
-            case TURN:
-                processTurn(incoming);
-                break;
             case GUESS:
                 processGuess(incoming);
                 break;
@@ -93,11 +92,6 @@ public class ServerThread extends BaseServerThread {
     private void processGuess(Payload incoming) {
         info("Processing guess payload");
         Server.INSTANCE.handleGuess(this, incoming.getMessage());
-    }
-
-    private void processTurn(Payload incoming) {
-        info("Processing turn payload");
-        Server.INSTANCE.handleTurn(this, incoming.getMessage());
     }
 
     private void processReady(Payload incoming) {
@@ -179,11 +173,27 @@ public class ServerThread extends BaseServerThread {
         return sendToClient(payload);
     }
 
+    protected boolean sendGameTimer(TimerType timerType, int secondsRemaining) {
+        TimerPayload payload = new TimerPayload();
+        payload.setPayloadType(PayloadType.GAME_TIMER_SYNC);
+        payload.setTimerType(timerType);
+        payload.setSecondsRemaining(secondsRemaining);
+        return sendToClient(payload);
+    }
+
     protected boolean sendReadyStatus(long clientId, boolean isReady) {
         BoolPayload payload = new BoolPayload();
         payload.setPayloadType(PayloadType.PLAYER_READY_STATUS);
         payload.setClientId(clientId);
         payload.setValue(isReady);
+        return sendToClient(payload);
+    }
+
+    protected boolean sendAwayStatus(long clientId, boolean isAway) {
+        BoolPayload payload = new BoolPayload();
+        payload.setPayloadType(PayloadType.PLAYER_AWAY_STATUS);
+        payload.setClientId(clientId);
+        payload.setValue(isAway);
         return sendToClient(payload);
     }
 
@@ -242,6 +252,14 @@ public class ServerThread extends BaseServerThread {
     protected boolean sendMessage(String message) {
         Payload payload = new Payload();
         payload.setPayloadType(PayloadType.MESSAGE);
+        payload.setMessage(message);
+        return sendToClient(payload);
+    }
+
+    protected boolean sendGameMessage(String message) {
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.MESSAGE);
+        payload.setClientId(Constants.GAME_CLIENT_ID);
         payload.setMessage(message);
         return sendToClient(payload);
     }
