@@ -641,6 +641,9 @@ public enum Client implements IClientCommands {
             case PLAYER_AWAY_STATUS:
                 processAwayStatus(payload);
                 break;
+            case PLAYER_TURN_STATUS:
+                processTurnStatus(payload);
+                break;
             default:
                 LoggerUtil.INSTANCE.warning("Received unhandled payload type: " + payload.getPayloadType());
         }
@@ -648,6 +651,7 @@ public enum Client implements IClientCommands {
 
     // Start region for process*() methods ===================================
     private void processQuestion(Payload payload) {
+        System.out.println("[DEBUG] processQuestion fired");
         if (!(payload instanceof QAPayload)) {
             LoggerUtil.INSTANCE.warning("Expected QAPayloadfor QUESTION confirmation, got: " + payload.getClass());
             return;
@@ -707,6 +711,27 @@ public enum Client implements IClientCommands {
             emitUiPlayerStatusUpdated(getMyUserSnapshot());
         }
 
+    }
+    private void processTurnStatus(Payload payload) {
+        if (!(payload instanceof BoolPayload)) {
+            LoggerUtil.INSTANCE.warning("Expected BoolPayload for PLAYER_TURN_STATUS, got: " + payload.getClass());
+            return;
+        }
+        BoolPayload bp = (BoolPayload) payload;
+        if (bp.getClientId() == Constants.DEFAULT_CLIENT_ID) {
+            knownUsers.forEach((key, user) -> user.setTurnTaken(false));
+            emitUiAllPlayerStatusesReset();
+            return;
+        }
+        User user = knownUsers.get(bp.getClientId());
+        if (user == null) {
+            return;
+        }
+        user.setTurnTaken(bp.getValue());
+        emitUiPlayerStatusUpdated(user);
+        if (isLocalPlayer(user.getClientId())) {
+            emitUiPlayerTurnCompleted(user.getClientId());
+        }
     }
 
     private void processAwayStatus(Payload payload) {

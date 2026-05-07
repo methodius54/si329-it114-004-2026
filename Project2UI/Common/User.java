@@ -108,6 +108,7 @@ public class User {
         this.guess = 0; // example user data
         this.points = 0;
         this.answer = null;
+        this.away = false;
     }
 
     public void reset() {
@@ -124,7 +125,6 @@ public class User {
         copy.setTurnTaken(source.isTurnTaken());
         copy.setAway(source.isAway());
         copy.setPoints(source.getPoints());
-        copy.setCardIds(source.getCardIds());
         copy.setAnswer(source.getAnswer());
         return copy;
     }

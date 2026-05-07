@@ -1,8 +1,13 @@
 package Project2UI.Server;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+
+import javax.smartcardio.Card;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -11,24 +16,19 @@ import Project2UI.Common.Constants;
 import Project2UI.Common.LoggerUtil;
 import Project2UI.Common.Phase;
 import Project2UI.Common.TimedEvent;
+import Project2UI.Common.TimerType;
 import Project2UI.Common.ValidationUtils;
 import Project2UI.Exceptions.ValidationException;
 import Project2UI.Common.QAPayload;
 import Project2UI.Common.Question;
 
-/**
- * Concrete game session scaffold based on the old GameRoom lifecycle.
- *
- * Commands currently supported from clients:
- * - /ready
- * - /turn <action>
- */
 public class GameServer extends BaseGameServer {
 
     private static final int MIN_PLAYERS_TO_START = 2;
     private static final int READY_SECONDS = 30;
     private static final int ROUND_SECONDS = 30;
     private static final int TURN_SECONDS = 20;
+    private static final int EVALUATION_SECONDS = 5;
     private static final String GAME_TAG = "[Game] ";
     private List<ServerThread> correctResponders = new ArrayList<>();
 
@@ -36,6 +36,7 @@ public class GameServer extends BaseGameServer {
     private volatile TimedEvent readyTimer;
     private volatile TimedEvent roundTimer;
     private volatile TimedEvent turnTimer;
+    private volatile TimedEvent evaluationTimer;
     private volatile Long currentTurnPlayerId;
     private int roundNumber = 0;
     // example data
@@ -70,7 +71,7 @@ public class GameServer extends BaseGameServer {
         }
         LoggerUtil.INSTANCE.info("[GameServer] Player joined via ready: " + client.getDisplayName());
         unicastGameMessage(client, "Joined as active player. Waiting room status: "
-                + getActivePlayerCount() + "/" + MIN_PLAYERS_TO_START + " ready.");
+                + getActivePlayerCount() + "/" + Constants.REQUIRE_PLAYERS + " ready.");
         if (phase != Phase.READY) {
             unicastGameStateToJoiner(client);
         }
@@ -90,15 +91,16 @@ public class GameServer extends BaseGameServer {
             onSessionEnd();
             return;
         }
-        if (phase == Phase.IN_PROGRESS && getActivePlayerCount() < MIN_PLAYERS_TO_START) {
+        if (phase != Phase.INACTIVE && getActivePlayerCount() < Constants.REQUIRE_PLAYERS) {
             broadcastGameMessage("Not enough active players to continue.");
             onSessionEnd();
-        }
+            return;
     }
+}
 
     @Override
     protected synchronized void onSessionStart() {
-    LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() start");
+        LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() start");
         loadQuestions();
         if (questions.isEmpty()) {
             broadcastGameMessage("Failed to load questions. Session cannot start.");
@@ -107,6 +109,7 @@ public class GameServer extends BaseGameServer {
         }
         resetReadyTimer();
         roundNumber = 0;
+
         broadcastGameMessage("Session started.");
         LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() end");
         onRoundStart();
@@ -116,10 +119,12 @@ public class GameServer extends BaseGameServer {
     protected synchronized void onRoundStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() start");
         resetRoundTimer();
-
         int randomIndex = new Random().nextInt(questions.size());
         currentQuestion = questions.remove(randomIndex);
-
+        // startRoundTimer(); // Round timer generally isn't useful during individual
+        // turns (unless you do something like <Num Players> * <Turn Duration>)
+        phase = Phase.IN_PROGRESS; // toggle from READY or EVALUATION
+        broadcastCurrentPhase();
         for (ServerThread player : getActivePlayers()) {
             player.setAnswer(null);
             player.setTurnTaken(false);
@@ -141,6 +146,7 @@ public class GameServer extends BaseGameServer {
         startRoundTimer();
         broadcastGameMessage("Round " + roundNumber + " started. You have " + ROUND_SECONDS + "s total.");
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() end");
+        onTurnStart(); // this example users onTurnStart() for individual turn pacing
     }
 
     @Override
@@ -148,16 +154,22 @@ public class GameServer extends BaseGameServer {
         LoggerUtil.INSTANCE.info("[GameServer] onTurnStart() start");
         resetTurnTimer();
 
-        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        if (snapshot.isEmpty()) {
+        if (getActivePlayers().isEmpty()) {
             onSessionEnd();
             return;
         }
-        // TODO: pick next player (covered in a future lesson, below is a temporary
-        // scaffold that just picks the first active player)
-        ServerThread chosen = snapshot.get(0); // simple scaffold: first active player
-        currentTurnPlayerId = chosen.getClientId();
 
+        ServerThread currentPlayer = findNextTurnPlayer();
+
+        if (currentPlayer == null) {
+            // If no non-away players are eligible, end the round to avoid stalling turn
+            // progression.
+            LoggerUtil.INSTANCE.info("[GameServer] No eligible non-away player found for turn start. Ending round.");
+            onRoundEnd();
+            return;
+        }
+
+        currentTurnPlayerId = currentPlayer.getClientId();
         startTurnTimer();
         broadcastGameMessage("Turn started for " + chosen.getDisplayName() + ". Use /turn <action> within "
                 + TURN_SECONDS + "s.");
@@ -176,12 +188,16 @@ public class GameServer extends BaseGameServer {
         // if all players have taken their turn, enter onRoundEnd() early instead of
         // waiting for the turn timer to expire
         boolean allTaken = getActivePlayers().stream().allMatch(ServerThread::isTurnTaken);
-        if (allTaken) {
-            // NOTE: be careful to not have two closely timed flows both call onRoundEnd()
-            // simultaneously
-            onRoundEnd();
-        }
-    }
+            if (allTaken) {
+                // NOTE: be careful to not have two closely timed flows both call onRoundEnd()
+                // simultaneously
+                onRoundEnd();
+            } 
+            else {
+                // Start the next turn after the same transition delay.
+                onTurnStart();
+            }
+        };
 
     @Override
     protected synchronized void onRoundEnd() {
@@ -209,19 +225,20 @@ public class GameServer extends BaseGameServer {
             .forEach(player -> broadcastGameMessage(
                     String.format("%s: %d points", player.getDisplayName(), player.getPoints())));
 
-    LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
+        LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
 
     if (roundNumber >= TOTAL_ROUNDS || questions.isEmpty()) {
-        onSessionEnd();
-    } else {
-        onRoundStart();
-    }
+            onSessionEnd();
+        } else {
+            onRoundStart();
+        }
     }
 
     @Override
     protected synchronized void onSessionEnd() {
         LoggerUtil.INSTANCE.info("[GameServer] onSessionEnd() start");
         resetReadyTimer();
+        resetEvaluationTimer();
         resetTurnTimer();
         resetRoundTimer();
 
@@ -232,24 +249,59 @@ public class GameServer extends BaseGameServer {
         phase = Phase.INACTIVE;
 
         List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
-        broadcastGameMessage("=== Final Scoreboard ===");
-        snapshot.stream()
-            .sorted((p1, p2) -> Integer.compare(p2.getPoints(), p1.getPoints()))
-            .forEach(player -> broadcastGameMessage(
-                    String.format("%s: %d points", player.getDisplayName(), player.getPoints())));
 
-    snapshot.stream()
-            .max((p1, p2) -> Integer.compare(p1.getPoints(), p2.getPoints()))
-            .ifPresentOrElse(winner -> {
-                broadcastGameMessage(String.format("Game over! %s wins with %d points!",
-                        winner.getDisplayName(), winner.getPoints()));
-            }, () -> {
-                broadcastGameMessage("Game over! No winner.");
-            });
+        // if not a valid session, reset state and don't produce scoring/winner output
+        if (phase.ordinal() <= Phase.READY.ordinal()) {
+            doSessionReset(snapshot);
+            return;
+        }
 
+        if (snapshot.isEmpty()) {
+            broadcastGameMessage("Session ended with no winner.");
+            doSessionReset(snapshot);
+            return;
+        }
+
+        int topScore = snapshot.stream().mapToInt(ServerThread::getPoints).max().orElse(0);
+        List<ServerThread> winners = snapshot.stream()
+                .filter(player -> player.getPoints() == topScore)
+                .toList();
+
+        if (winners.size() == 1) {
+            ServerThread winner = winners.get(0);
+            broadcastGameMessage(String.format("Session ended: %s wins with %d points!",
+                    winner.getDisplayName(),
+                    winner.getPoints()));
+        } else {
+            String winnerNames = winners.stream()
+                    .map(ServerThread::getDisplayName)
+                    .collect(Collectors.joining(", "));
+            broadcastGameMessage(String.format("Session ended in a tie at %d points: %s",
+                    topScore,
+                    winnerNames));
+        }
+
+        phase = Phase.EVALUATION;
+        broadcastCurrentPhase();
+        broadcastGameMessage("Results displayed for " + EVALUATION_SECONDS + " seconds...");
+        startEvaluationTimer(snapshot);
+        LoggerUtil.INSTANCE.info("[GameServer] onSessionEnd() end — evaluation timer started");
+    }
+
+    // wrapped reset logic so a delay could be used to give users time to see the
+    // end results before reset
+    private void doSessionReset(List<ServerThread> snapshot) {
+        LoggerUtil.INSTANCE.info("[GameServer] doSessionReset() start");
+        resetEvaluationTimer();
+        phase = Phase.INACTIVE;
+        // reset player data and sync changes to clients before clearing active players,
+        // so that clients have a chance to update any relevant UI (like ready status)
+        // before being removed from the session
         for (ServerThread player : snapshot) {
             player.resetGameState();
         }
+        // default client id is used as a reset trigger, no need to individually sync
+        // resets for each property
         broadcastReadyStatus(Constants.DEFAULT_CLIENT_ID, false);
         clearActivePlayers();
 
@@ -270,7 +322,11 @@ public class GameServer extends BaseGameServer {
         }
         if (readyTimer == null) {
             readyTimer = new TimedEvent(READY_SECONDS, this::checkReadyStatus);
-            readyTimer.setTickCallback(time -> LoggerUtil.INSTANCE.info("[GameServer] Ready timer: " + time));
+            readyTimer.setTickCallback(time -> {
+                int clampedTime = Math.max(0, time);
+                LoggerUtil.INSTANCE.info("[GameServer] Ready timer: " + clampedTime);
+                broadcastGameTimer(TimerType.READY, clampedTime);
+            });
             broadcastGameMessage(
                     "Ready check started. Session begins in " + READY_SECONDS + "s if enough players are ready.");
         }
@@ -285,7 +341,11 @@ public class GameServer extends BaseGameServer {
 
     private synchronized void startRoundTimer() {
         roundTimer = new TimedEvent(ROUND_SECONDS, this::onRoundEnd);
-        roundTimer.setTickCallback(time -> LoggerUtil.INSTANCE.info("[GameServer] Round timer: " + time));
+        roundTimer.setTickCallback(time -> {
+            int clampedTime = Math.max(0, time);
+            LoggerUtil.INSTANCE.info("[GameServer] Round timer: " + clampedTime);
+            broadcastGameTimer(TimerType.ROUND, clampedTime);
+        });
     }
 
     private synchronized void resetRoundTimer() {
@@ -297,7 +357,11 @@ public class GameServer extends BaseGameServer {
 
     private synchronized void startTurnTimer() {
         turnTimer = new TimedEvent(TURN_SECONDS, this::onTurnEnd);
-        turnTimer.setTickCallback(time -> LoggerUtil.INSTANCE.info("[GameServer] Turn timer: " + time));
+        turnTimer.setTickCallback(time -> {
+            int clampedTime = Math.max(0, time);
+            LoggerUtil.INSTANCE.info("[GameServer] Turn timer: " + clampedTime);
+            broadcastGameTimer(TimerType.TURN, clampedTime);
+        });
     }
 
     private synchronized void resetTurnTimer() {
@@ -325,6 +389,7 @@ public class GameServer extends BaseGameServer {
     protected void handleAnswer(ServerThread sender, String triviaAnswer) {
         try {
             ValidationUtils.requireParticipating(isActivePlayer(sender));
+            ValidationUtils.requireNotAway(sender.isAway());
             ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
             triviaAnswer = ValidationUtils.requireValidTurnOption(triviaAnswer.trim());
 
@@ -418,26 +483,24 @@ public class GameServer extends BaseGameServer {
         }
     }
 
-    /**
-     * Handles a player's turn action. Validates the action, records the turn, and
-     * advances the game. Sends an error message back to the player on failure.
-     */
-    @Deprecated
-    public void handleTurn(ServerThread sender, String action) {
+    public void handleAwayToggle(ServerThread sender) {
         try {
-            ValidationUtils.requireParticipating(isActivePlayer(sender));
-            ValidationUtils.requirePhase(phase, Phase.IN_PROGRESS);
-            ValidationUtils.requireTurnNotTaken(sender.isTurnTaken());
-            String normalizedAction = ValidationUtils.requireValidTurnOption(action);
+            ValidationUtils.requireParticipating(isActivePlayer(sender),
+                    sender.getDisplayName() + " is not a participant");
+            boolean away = !sender.isAway();
+            sender.setAway(away);
+            broadcastAwayStatus(sender.getClientId(), away);
 
-            // TODO: turn logic would go here, in this example we're just marking that we
-            // took a turn
-            // ValidationUtils.requireCurrentPlayer(currentTurnPlayerId,
-            // sender.getClientId());
-
-            sender.setTurnTaken(true);
-            broadcastTurnStatus(sender.getClientId(), true);
-            onTurnEnd();
+            if (away) {
+                broadcastGameMessage(sender.getDisplayName() + " is away.");
+                // If the away player is currently taking a turn, advance to next player
+                if (currentTurnPlayerId != null && currentTurnPlayerId == sender.getClientId()) {
+                    broadcastGameMessage(sender.getDisplayName() + " went away during their turn. Advancing turn.");
+                    onTurnEnd();
+                }
+            } else {
+                broadcastGameMessage(sender.getDisplayName() + " is back.");
+            }
         } catch (ValidationException e) {
             LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
             unicastGameMessage(sender, e.getMessage());
@@ -456,7 +519,7 @@ public class GameServer extends BaseGameServer {
             while((line = reader.readLine()) != null) {
                 if (line.isBlank() || line.startsWith("#")) {
                     continue;
-                }
+        }
                 String[] parts = line.split("\\|");
                 if (parts.length != 7) {
                     LoggerUtil.INSTANCE.warning("malformed question line skipping: " + line);
@@ -476,7 +539,7 @@ public class GameServer extends BaseGameServer {
         }
         catch (IOException e) {
         LoggerUtil.INSTANCE.severe("GameServer Failed to load questions file: " + e.getMessage());
-        }
+    }
         }
     private void broadcastPointsReset() { // optional reset for specific property, but we'll leverage the READY reset as
                                           // a full reset for simplicity in this example
@@ -518,6 +581,7 @@ public class GameServer extends BaseGameServer {
             }
             unicastReadyStatus(joiner, player.getClientId(), player.isReady());
             unicastTurnStatus(joiner, player.getClientId(), player.isTurnTaken());
+            unicastAwayStatus(joiner, player.getClientId(), player.isAway());
             unicastPlayerPoints(joiner, player.getClientId(), player.getPoints());
         }
     }
@@ -556,12 +620,19 @@ public class GameServer extends BaseGameServer {
         Server.INSTANCE.unicast(target, serverThread -> serverThread.sendTurnStatus(clientId, hasTakenTurn));
     }
 
-    /** Sends a game message to all connected clients. */
+    /**
+     * Sends a game event message to all connected clients.
+     * Tagged with GAME_CLIENT_ID so clients route it to the game events panel.
+     */
     private void broadcastGameMessage(String message) {
-        Server.INSTANCE.broadcast(null, GAME_TAG + message);
+        final String formatted = GAME_TAG + message;
+        Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendGameMessage(formatted));
     }
 
-    /** Sends a game message to a single client. */
+    /**
+     * Sends a game event message to a single client.
+     * Tagged with GAME_CLIENT_ID so the client routes it to the game events panel.
+     */
     private void unicastGameMessage(ServerThread target, String message) {
         if (target == null) {
             return;

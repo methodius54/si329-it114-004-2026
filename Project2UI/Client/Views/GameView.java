@@ -22,17 +22,21 @@ import javax.swing.SwingConstants;
 
 import Project2UI.Client.Client;
 import Project2UI.Client.Interfaces.IConnectionEvents;
+import Project2UI.Client.Interfaces.IGameFlowEvents;
+import Project2UI.Client.Interfaces.IGameTimerEvents;
 import Project2UI.Client.Interfaces.IPlayerEvents;
 import Project2UI.Client.Interfaces.IPlayerStatusEvents;
+import Project2UI.Client.Interfaces.IGameQuestionEvents;
 import Project2UI.Common.Constants;
 import Project2UI.Common.Phase;
+import Project2UI.Common.TimerType;
 import Project2UI.Common.User;
 import Project2UI.Exceptions.ValidationException;
 
 /**
  * Main gameplay panel that shows phase-aware status, cards, grid actions, and game events.
  */
-public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents, IPlayerStatusEvents, IGameFlowEvents, IGameTimerEvents {
+public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents, IPlayerStatusEvents, IGameFlowEvents, IGameTimerEvents, IGameQuestionEvents {
     
     private final Client client;
     private final JLabel statusLabel = new JLabel("Connect to the server to receive game data.");
@@ -41,6 +45,8 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
     private final GameEventsView gameEventsView = new GameEventsView();
     private final JPanel phaseContentPanel = new JPanel(new CardLayout());
     private final JPanel evaluationPanel = createCenteredPhasePanel("Evaluating round results...");
+    private static final String CARD_PLAY = "PLAY";
+    private static final String CARD_EVALUATION = "EVALUATION";
 
     // trivia fields
     private final JLabel categoryLabel = new JLabel("Category: ");
@@ -59,12 +65,12 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
         JPanel status = new JPanel();
         status.setLayout(new BoxLayout(status, BoxLayout.Y_AXIS));
         // Single-line status/instruction area shown above the board.
-        status.add(selectionLabel);
+        status.add(statusLabel);
         readyButton.addActionListener(event -> {
             try {
                 client.sendReadySignal();
             } catch (ValidationException e) {
-                selectionLabel.setText(e.getMessage());
+                statusLabel.setText(e.getMessage());
             }
         });
         readyPanel.add(readyButton);
@@ -74,7 +80,7 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
         JPanel questionPanel = new JPanel();
         questionPanel.setLayout(new BoxLayout(questionPanel, BoxLayout.Y_AXIS));
         questionPanel.setBorder(BorderFactory.createEmptyBorder(6,6,6,6));
-        categoryLabel.setFont(categoryLabel.getFont.deriveFont(Font.BOLD, 13f));
+        categoryLabel.setFont(categoryLabel.getFont().deriveFont(Font.BOLD, 13f));
         questionPanel.add(categoryLabel);
         questionPanel.add(questionLabel);
         questionPanel.add(timerLabel);
@@ -86,9 +92,9 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
             final String choice = labels[i];
             answerButtons[i] = new JButton(choice);
             answerButtons[i].setEnabled(false);
-            answersButtons[i].addActionListener(event -> {
+            answerButtons[i].addActionListener(event -> {
                 try {
-                    client.setAnswerSignal(choice);
+                     client.sendAnswerSignal(choice);
                     lockInAnswer(choice);
                 }
                 catch (ValidationException e) {
@@ -105,10 +111,13 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
         phaseContentPanel.add(playPanel, CARD_PLAY);
         phaseContentPanel.add(evaluationPanel, CARD_EVALUATION);
 
-        JSplitPane gameSplit = JSplitPane(JSplitPane.VERTICAL_SPLIT, phaseContentPanel, gameEventsView);
+        JSplitPane gameSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, phaseContentPanel, gameEventsView);
         gameSplit.setResizeWeight(0.75);
         gameSplit.setDividerLocation(0.75);
 
+        JPanel gameContent = new JPanel(new BorderLayout(6, 6));
+        gameContent.add(gameSplit, BorderLayout.CENTER);
+        
         add(status, BorderLayout.NORTH);
         add(gameContent, BorderLayout.CENTER);
         resetView();
@@ -131,7 +140,7 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
     @Override
     public void onConnected(User localUser) {
         // Connection lifecycle event keeps top status text in sync with session state.
-        selectionLabel.setText("Connected. Complete the ready check to join the round.");
+        statusLabel.setText("Connected. Complete the ready check to join the round.");
         refreshStatusOnly();
     }
 
@@ -244,8 +253,9 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
     }
 
     public void onQuestionReceived(String category, String question, List<String> options) {
+        System.out.println("[DEBUG] onQuestionReceived fired: " + category + " / " + question);
         categoryLabel.setText("Category: " + category);
-        questionLabel.setText("<html>" + question + "/html");
+        questionLabel.setText("<html>" + question + "</html>");
         for (int i = 0; i < answerButtons.length; i++) {
                     answerButtons[i].setBackground(null);
         answerButtons[i].setEnabled(true);
@@ -261,13 +271,6 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
     repaint();
     }
 
-    @Override
-    public void onGameTimerUpdated(TimerType TimerType, int secondsRemaining) {
-        if(TimerType == TimerType.ROUND) {
-            timerLabel.setText(String.format("Time: %s", secondsRemaining));
-        }
-    }
-
     private JPanel createCenteredPhasePanel(String message) {
         JPanel panel = new JPanel(new BorderLayout());
         JLabel messageLabel = new JLabel(message, SwingConstants.CENTER);
@@ -277,7 +280,7 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
 
     private void resetView() {
         // Local UI reset for disconnect/inactive states.
-        selectionLabel.setText("Connect to the server to receive game data.");
+        statusLabel.setText("Connect to the server to receive game data.");
         categoryLabel.setText("Category:");
         questionLabel.setText("Question here");
         timerLabel.setText("Time: --");
