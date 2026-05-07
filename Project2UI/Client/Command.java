@@ -1,4 +1,4 @@
-package Project2UI2.Client;
+package Project2UI.Client;
 
 /**
  * Recognized client-side commands.

@@ -1,4 +1,4 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
 public class User {
     private long clientId = Constants.DEFAULT_CLIENT_ID;

@@ -1,10 +1,10 @@
-package Project2UI2.Server;
+package Project2UI.Server;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 
-import Project2UI2.Common.LoggerUtil;
+import Project2UI.Common.LoggerUtil;
 
 /**
  * Abstract base class for game session logic. Owns player membership and

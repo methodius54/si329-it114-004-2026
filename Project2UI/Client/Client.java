@@ -16,14 +16,14 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.smartcardio.Card;
+import Project2UI.Common.QAPayload;
 
 import Project2UI.Client.Interfaces.IChatEvents;
 import Project2UI.Client.Interfaces.IClientCommands;
 import Project2UI.Client.Interfaces.IClientEvents;
 import Project2UI.Client.Interfaces.IConnectionEvents;
 import Project2UI.Client.Interfaces.IGameFlowEvents;
+import Project2UI.Client.Interfaces.IGameQuestionEvents;
 import Project2UI.Client.Interfaces.IGameTimerEvents;
 import Project2UI.Client.Interfaces.IPlayerEvents;
 import Project2UI.Client.Interfaces.IPlayerStatusEvents;
@@ -214,6 +214,9 @@ public enum Client implements IClientCommands {
         passToUiCallbacks(IGameTimerEvents.class,
                 callback -> callback.onGameTimerUpdated(timerType, secondsRemaining));
     }
+    private void emitUiQuestionReceived(String category, String question, List<String> options) {
+        passToUiCallbacks(IGameQuestionEvents.class, callback -> callback.onQuestionReceived(category, question, options));
+    }
 
     public boolean isConnected() {
         if (server == null)
@@ -307,13 +310,13 @@ public enum Client implements IClientCommands {
     }
     
     @Override
-    public void sendAnswerSignal() throws ValidationException {
+    public void sendAnswerSignal(String choice) throws ValidationException {
         try {
-            sendAnswer();
+            sendAnswer(choice);
         }
         catch (IOException e) {
-            LoggerUtil.INSTANCE.Warning("Failed to send click signal:" + e.getMessage());
-            emitUiSystemMessage("Failed to send click signal.");
+            LoggerUtil.INSTANCE.warning("Failed to send answer signal:" + e.getMessage());
+            emitUiSystemMessage("Failed to send answer signal.");
         }
     }
 
@@ -644,49 +647,13 @@ public enum Client implements IClientCommands {
     }
 
     // Start region for process*() methods ===================================
-        private void processPoints(Payload payload) {
-        if (!(payload instanceof PointsPayload)) {
-            LoggerUtil.INSTANCE.warning("Expected PointsPayload for POINTS confirmation, got: " + payload.getClass());
-            return;
-        }
-        long clientId = payload.getClientId();
-        int points = ((PointsPayload) payload).getPoints();
-        if (clientId == Constants.DEFAULT_CLIENT_ID) {
-            // reset points trigger for all users (if needing to reset during a session)
-            knownUsers.forEach((key, user) -> user.setPoints(0));
-            LoggerUtil.INSTANCE.info(TextFX.colorize("All users' points reset", Color.YELLOW));
-            return;
-        }
-        User user = knownUsers.get(clientId);
-        if (user == null) {
-            return;
-        }
-        user.setPoints(points); // updated directly from trusted server
-        if (currentGamePhase.ordinal() >= Phase.IN_PROGRESS.ordinal()) {
-            // only print point updates during the game; before the game starts, points may
-            // be changing frequently as users ready/unready
-            LoggerUtil.INSTANCE.info(TextFX.colorize(
-                    String.format("%s now has %d points", user.getDisplayName(), points),
-                    Color.YELLOW));
-        }
-
-    }
-
     private void processQuestion(Payload payload) {
         if (!(payload instanceof QAPayload)) {
             LoggerUtil.INSTANCE.warning("Expected QAPayloadfor QUESTION confirmation, got: " + payload.getClass());
             return;
         }
         QAPayload qa = (QAPayload) payload;
-        StringBuilder  sb = new StringBuilder();
-        sb.append(String.format("\n[Category: %s]\n", qa.getCategory()));
-        sb.append(String.format("\n[Question: %s]\n", qa.getQuestion()));
-        List<String> options = qa.getOptions();
-        for (int i = 0; i < options.size(); i++) {
-            sb.append(String.format("%s\n", options.get(i)));
-        }
-
-        LoggerUtil.INSTANCE.info(TextFX.colorize(sb.toString(), Color.CYAN));
+        emitUiQuestionReceived(qa.getCategory(), qa.getQuestion(), qa.getOptions());
     }
 
     private void processGameTimerSync(Payload payload) {
@@ -702,73 +669,6 @@ public enum Client implements IClientCommands {
         }
 
         emitUiGameTimerUpdated(timerType, tp.getSecondsRemaining());
-    }
-    private void processGridSeedSync(Payload payload) {
-        if (!(payload instanceof GridSeedPayload)) {
-            LoggerUtil.INSTANCE.warning("Expected GridSeedPayload for GRID_SEED_SYNC, got: " + payload.getClass());
-            return;
-        }
-        GridSeedPayload gsp = (GridSeedPayload) payload;
-        clearLocalGrid();
-        if (!ValidationUtils.hasValidDimensions(gsp.getWidth(), gsp.getHeight())) {
-            LoggerUtil.INSTANCE.info(TextFX.colorize(
-                    "[Game] Grid reset trigger received from server.",
-                    Color.YELLOW));
-            //clearLocalGrid();
-            return;
-        }
-
-      
-        localGridSeed = gsp.getSeed();
-        Grid grid = new Grid();
-        grid.setSize(gsp.getWidth(), gsp.getHeight());
-        grid.setToRandom(localGridSeed);
-        localGrid = grid;
-        LoggerUtil.INSTANCE.info(TextFX.colorize(
-                String.format("[Game] Grid seeded (%dx%d) with seed %d", gsp.getWidth(), gsp.getHeight(),
-                        localGridSeed),
-                Color.YELLOW));
-        LoggerUtil.INSTANCE.info(TextFX.colorize("\n" + localGrid.toGridString(), Color.CYAN));
-        emitUiLocalGridUpdated();
-    }
-
-    private void processGridCellSync(Payload payload) {
-        if (!(payload instanceof GridCellPayload)) {
-            LoggerUtil.INSTANCE.warning("Expected GridCellPayload for GRID_CELL_SYNC, got: " + payload.getClass());
-            return;
-        }
-        GridCellPayload gcp = (GridCellPayload) payload;
-        if (localGrid == null) {
-            LoggerUtil.INSTANCE.warning("Received GRID_CELL_SYNC before local grid was initialized.");
-            return;
-        }
-        if (!ValidationUtils.isInBounds(gcp.getX(), gcp.getY(), localGrid.getWidth(), localGrid.getHeight())) {
-            LoggerUtil.INSTANCE.warning(String.format(
-                    "Received out-of-bounds GRID_CELL_SYNC for (%d,%d).",
-                    gcp.getX(),
-                    gcp.getY()));
-            return;
-        }
-        localGrid.setValue(gcp.getX(), gcp.getY(), gcp.getValue());
-        LoggerUtil.INSTANCE.info(TextFX.colorize("\n" + localGrid.toGridString(), Color.CYAN));
-        emitUiLocalGridUpdated();
-    }
-
-    private void clearLocalGrid() {
-        if (localGrid != null) {
-            localGrid.clear();
-            localGrid = null;
-        }
-        localGridSeed = 0L;
-    }
-
-    private void processCurrentTurn(Payload payload) {
-        currentTurnClientId = payload.getClientId();
-        User currentTurnUser = knownUsers.get(currentTurnClientId);
-        // Use local map for name lookup
-        String currentTurnName = currentTurnUser != null ? currentTurnUser.getDisplayName() : "Unknown";
-        LoggerUtil.INSTANCE.info(TextFX.colorize("Current turn: " + currentTurnName, Color.YELLOW));
-        emitUiCurrentTurnUpdated();
     }
 
     private void processPoints(Payload payload) {
@@ -1000,7 +900,6 @@ public enum Client implements IClientCommands {
         knownUsers.clear();
         myUser.reset();
         currentGamePhase = Phase.INACTIVE;
-        clearLocalGrid();
         try {
             if (out != null) {
                 LoggerUtil.INSTANCE.info("Closing output stream");

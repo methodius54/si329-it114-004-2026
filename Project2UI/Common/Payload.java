@@ -1,4 +1,4 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
 import java.io.Serializable;
 

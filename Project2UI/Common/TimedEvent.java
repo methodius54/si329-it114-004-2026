@@ -1,4 +1,4 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
 /* Originally based off of
 https://gist.github.com/MattToegel/c55747f26c5092d6362678d5b1729ec6 */

@@ -1,4 +1,4 @@
-package Project2UI2.Exceptions;
+package Project2UI.Exceptions;
 
 public class PlayerNotParticipatingException extends ValidationException {
     public PlayerNotParticipatingException(String message) {

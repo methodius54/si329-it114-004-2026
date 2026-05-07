@@ -1,4 +1,4 @@
-package Project2UI2.Server;
+package Project2UI.Server;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import Project2UI2.Common.LoggerUtil;
-import Project2UI2.Common.TextFX;
-import Project2UI2.Common.TextFX.Color;
+import Project2UI.Common.LoggerUtil;
+import Project2UI.Common.TextFX;
+import Project2UI.Common.TextFX.Color;
 
 /**
  * Base server plumbing: connection management, broadcast/unicast helpers,

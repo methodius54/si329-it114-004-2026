@@ -11,7 +11,7 @@ public interface IClientCommands {
 
     void sendReadySignal() throws ValidationException;
 
-    void sendAnswerSignal() throws ValidationException;
+    void sendAnswerSignal(String choice) throws ValidationException;
     
     void setDisplayName(String name);
 

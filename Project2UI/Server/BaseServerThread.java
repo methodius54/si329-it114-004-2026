@@ -1,15 +1,15 @@
-package Project2UI2.Server;
+package Project2UI.Server;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 
-import Project2UI2.Common.Payload;
-import Project2UI2.Common.TextFX;
-import Project2UI2.Common.TextFX.Color;
-import Project2UI2.Common.User;
-import Project2UI2.Common.Constants;
+import Project2UI.Common.Payload;
+import Project2UI.Common.TextFX;
+import Project2UI.Common.TextFX.Color;
+import Project2UI.Common.User;
+import Project2UI.Common.Constants;
 
 /**
  * Base class the handles the underlying connection between Client and

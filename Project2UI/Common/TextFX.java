@@ -1,4 +1,4 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
 /**
  * Utility to attempt to provide colored text in the terminal.

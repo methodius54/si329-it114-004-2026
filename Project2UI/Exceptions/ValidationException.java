@@ -1,4 +1,4 @@
-package Project2UI2.Exceptions;
+package Project2UI.Exceptions;
 
 public class ValidationException extends Exception {
     public ValidationException(String message) {

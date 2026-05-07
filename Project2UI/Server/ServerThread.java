@@ -1,18 +1,18 @@
-package Project2UI2.Server;
+package Project2UI.Server;
 
 import java.net.Socket;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import Project2UI2.Common.ConnectionPayload;
-import Project2UI2.Common.Constants;
-import Project2UI2.Common.BoolPayload;
-import Project2UI2.Common.Phase;
-import Project2UI2.Common.PointsPayload;
-import Project2UI2.Common.Payload;
-import Project2UI2.Common.PayloadType;
-import Project2UI2.Common.LoggerUtil;
-import Project2UI2.Common.QAPayload;
+import Project2UI.Common.ConnectionPayload;
+import Project2UI.Common.Constants;
+import Project2UI.Common.BoolPayload;
+import Project2UI.Common.Phase;
+import Project2UI.Common.PointsPayload;
+import Project2UI.Common.Payload;
+import Project2UI.Common.PayloadType;
+import Project2UI.Common.LoggerUtil;
+import Project2UI.Common.QAPayload;
 
 /**
  * Server-side handler for one connected client.

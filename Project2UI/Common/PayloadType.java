@@ -1,4 +1,4 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
 public enum PayloadType {
     CLIENT_CONNECT, // client requesting to connect to server (passing of initialization data

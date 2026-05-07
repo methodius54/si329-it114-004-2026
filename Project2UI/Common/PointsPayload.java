@@ -1,4 +1,4 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
 public class PointsPayload extends Payload {
     private int points;

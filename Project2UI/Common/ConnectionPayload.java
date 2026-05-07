@@ -1,4 +1,4 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
 public class ConnectionPayload extends Payload {
     private String clientName;

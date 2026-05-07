@@ -1,4 +1,4 @@
-package Project2UI2.Server;
+package Project2UI.Server;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -7,14 +7,14 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-import Project2UI2.Common.Constants;
-import Project2UI2.Common.LoggerUtil;
-import Project2UI2.Common.Phase;
-import Project2UI2.Common.TimedEvent;
-import Project2UI2.Common.ValidationUtils;
-import Project2UI2.Exceptions.ValidationException;
-import Project2UI2.Common.QAPayload;
-import Project2UI2.Common.Question;
+import Project2UI.Common.Constants;
+import Project2UI.Common.LoggerUtil;
+import Project2UI.Common.Phase;
+import Project2UI.Common.TimedEvent;
+import Project2UI.Common.ValidationUtils;
+import Project2UI.Exceptions.ValidationException;
+import Project2UI.Common.QAPayload;
+import Project2UI.Common.Question;
 
 /**
  * Concrete game session scaffold based on the old GameRoom lifecycle.
@@ -43,7 +43,7 @@ public class GameServer extends BaseGameServer {
     // question data
     private List<Question> questions = new ArrayList<>();
     private Question currentQuestion = null;
-    private static final String QUESTIONS_FILE = "Project2UI2/questions.txt";
+    private static final String QUESTIONS_FILE = "Project2UI/questions.txt";
     private static final int TOTAL_ROUNDS = 3;
 
     // start region for lifecycle hook implementations
