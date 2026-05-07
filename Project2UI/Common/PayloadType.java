@@ -23,4 +23,6 @@ public enum PayloadType {
     // ---------
     ANSWER, // Used by a client to send the answer, as well as server to confirm the guess, similar to the guess structure.
     QUESTION, // used to send the question down to the client
+    GAME_TIMER_SYNC,
+    PLAYER_AWAY_STATUS,
 }

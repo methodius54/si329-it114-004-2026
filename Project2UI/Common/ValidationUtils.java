@@ -1,13 +1,13 @@
-package Project2UI2.Common;
+package Project2UI.Common;
 
-import Project2UI2.Exceptions.AlreadyReadyException;
-import Project2UI2.Exceptions.BlankValidationException;
-import Project2UI2.Exceptions.ConditionValidationException;
-import Project2UI2.Exceptions.DuplicateTurnChoiceException;
-import Project2UI2.Exceptions.InvalidGamePhaseException;
-import Project2UI2.Exceptions.InvalidTurnOptionException;
-import Project2UI2.Exceptions.NullValidationException;
-import Project2UI2.Exceptions.PlayerNotParticipatingException;
+import Project2UI.Exceptions.AlreadyReadyException;
+import Project2UI.Exceptions.BlankValidationException;
+import Project2UI.Exceptions.ConditionValidationException;
+import Project2UI.Exceptions.DuplicateTurnChoiceException;
+import Project2UI.Exceptions.InvalidGamePhaseException;
+import Project2UI.Exceptions.InvalidTurnOptionException;
+import Project2UI.Exceptions.NullValidationException;
+import Project2UI.Exceptions.PlayerNotParticipatingException;
 
 public final class ValidationUtils {
 
@@ -20,11 +20,16 @@ public final class ValidationUtils {
     private static final String DEFAULT_PARTICIPATING_MESSAGE = "You need to be ready before you can do that.";
     private static final String DEFAULT_ALREADY_READY_MESSAGE = "You're already marked ready for this session.";
     private static final String DEFAULT_TURN_TAKEN_MESSAGE = "You already made your choice for this round.";
-    private static final String DEFAULT_CURRENT_PLAYER_MESSAGE = "Please wait for your turn.";
     private static final String DEFAULT_TURN_OPTION_MESSAGE = "That turn option is not available.";
+    private static final String DEFAULT_AWAY_MESSAGE = "Player is away and cannot perform actions";
 
     private ValidationUtils() {
     }
+
+    public static boolean isNullOrBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
 
     public static void requireTrue(boolean condition) throws ConditionValidationException {
         requireTrue(condition, DEFAULT_TRUE_MESSAGE);
@@ -122,26 +127,34 @@ public final class ValidationUtils {
         }
     }
 
-    public static void requireCurrentPlayer(Long currentTurnPlayerId,
-            long senderClientId) throws ConditionValidationException {
-        requireCurrentPlayer(currentTurnPlayerId, senderClientId, DEFAULT_CURRENT_PLAYER_MESSAGE);
+    public static void requireNotAway(boolean away) throws ConditionValidationException {
+        requireNotAway(away, DEFAULT_AWAY_MESSAGE);
     }
 
-    public static void requireCurrentPlayer(Long currentTurnPlayerId,
-            long senderClientId,
-            String errorMessage) throws ConditionValidationException {
-        if (currentTurnPlayerId == null || currentTurnPlayerId.longValue() != senderClientId) {
+    public static void requireNotAway(boolean away, String errorMessage) throws ConditionValidationException {
+        if (away) {
             throw new ConditionValidationException(errorMessage);
         }
     }
-    public static String requireValidTurnOption(String value) throws InvalidTurnOptionException {
+
+    public static String requireValidTurnOption(String value)
+            throws InvalidTurnOptionException {
         return requireValidTurnOption(value, DEFAULT_TURN_OPTION_MESSAGE);
     }
 
-    public static String requireValidTurnOption(String value, String errorMessage) throws InvalidTurnOptionException {
-        String normalized = value == null ? "" : value.trim().toUpperCase();
-        if (!normalized.equals("A") && !normalized.equals("B") && !normalized.equals("C") && !normalized.equals("D")) {
-            throw new InvalidTurnOptionException("Please enter a valid answer choice, (A,B,C or D)");
+    public static String requireValidTurnOption(String value, String errorMessage)
+            throws InvalidTurnOptionException {
+        String normalized = value == null ? "" : value.trim().toLowerCase();
+
+        // example validation for example game
+        // requires a number between 1 and 10 (inclusive)
+        try {
+            int guess = Integer.parseInt(normalized);
+            if (guess < 1 || guess > 10) {
+                throw new InvalidTurnOptionException("Please enter a number between 1 and 10.");
+            }
+        } catch (NumberFormatException e) {
+            throw new InvalidTurnOptionException("Please enter a valid number.");
         }
         return normalized;
     }

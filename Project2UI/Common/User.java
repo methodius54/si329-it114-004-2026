@@ -8,6 +8,7 @@ public class User {
     private int guess = 0;// example user data
     private int points = 0;
     private String answer;
+    private boolean away = false;
 
     public User() {
     }
@@ -114,4 +115,25 @@ public class User {
         this.clientName = null;
         resetGameState();
     }
+        public static User copyOf(User source) {
+        if (source == null) {
+            return null;
+        }
+        User copy = new User(source.getClientId(), source.getClientName());
+        copy.setReady(source.isReady());
+        copy.setTurnTaken(source.isTurnTaken());
+        copy.setAway(source.isAway());
+        copy.setPoints(source.getPoints());
+        copy.setCardIds(source.getCardIds());
+        copy.setAnswer(source.getAnswer());
+        return copy;
+    }
+
+        public boolean isAway() {
+            return away;
+        }
+
+        public void setAway(boolean away) {
+            this.away = away;
+        }
 }

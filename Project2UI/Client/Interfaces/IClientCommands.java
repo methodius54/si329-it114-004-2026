@@ -11,8 +11,8 @@ public interface IClientCommands {
 
     void sendReadySignal() throws ValidationException;
 
-    void sendCardAction(int cardId, int x, int y) throws ValidationException;
-
+    void sendAnswerSignal() throws ValidationException;
+    
     void setDisplayName(String name);
 
     void sendAwayToggle() throws ValidationException;
