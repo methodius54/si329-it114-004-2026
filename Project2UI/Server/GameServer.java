@@ -2,8 +2,10 @@ package Project2UI.Server;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import java.io.BufferedReader;
@@ -19,6 +21,7 @@ import Project2UI.Common.ValidationUtils;
 import Project2UI.Exceptions.ValidationException;
 import Project2UI.Common.QAPayload;
 import Project2UI.Common.Question;
+import Project2UI.Common.QuestionPayload;
 
 public class GameServer extends BaseGameServer {
 
@@ -27,6 +30,9 @@ public class GameServer extends BaseGameServer {
     private static final int ROUND_SECONDS = 30;
     private static final int EVALUATION_SECONDS = 5;
     private static final String GAME_TAG = "[Game] ";
+    private long creatorClientId = Constants.DEFAULT_CLIENT_ID;
+    private Set<String> availableCategories = new HashSet<>();
+    private Set<String> enabledCategories = new HashSet<>();
     private List<ServerThread> correctResponders = new ArrayList<>();
 
     private volatile Phase phase = Phase.INACTIVE;
@@ -55,6 +61,8 @@ public class GameServer extends BaseGameServer {
         }
         LoggerUtil.INSTANCE.info("[GameServer] Spectator joined: " + client.getDisplayName());
         unicastGameMessage(client, "Joined as spectator. Current active players: " + getActivePlayerCount());
+        unicastCategories(client);
+        unicastCreator(client);
         unicastGameStateToJoiner(client);
     }
 
@@ -71,6 +79,8 @@ public class GameServer extends BaseGameServer {
                 + getActivePlayerCount() + "/" + Constants.REQUIRE_PLAYERS + " ready.");
         if (phase != Phase.READY) {
             unicastGameStateToJoiner(client);
+            unicastCategories(client);
+            unicastCreator(client);
         }
         broadcastGameMessage(client.getDisplayName() + " joined active players.");
         broadcastGameMessage("Active players: " + getActivePlayerCount());
@@ -98,7 +108,6 @@ public class GameServer extends BaseGameServer {
     @Override
     protected synchronized void onSessionStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onSessionStart() start");
-        loadQuestions();
         if (questions.isEmpty()) {
             broadcastGameMessage("Failed to load questions. Session cannot start.");
             onSessionEnd();
@@ -116,10 +125,15 @@ public class GameServer extends BaseGameServer {
     protected synchronized void onRoundStart() {
         LoggerUtil.INSTANCE.info("[GameServer] onRoundStart() start");
         resetRoundTimer();
-        int randomIndex = new Random().nextInt(questions.size());
-        currentQuestion = questions.remove(randomIndex);
-        // startRoundTimer(); // Round timer generally isn't useful during individual
-        // turns (unless you do something like <Num Players> * <Turn Duration>)
+        List<Question> eligible = questions.stream().filter(q -> enabledCategories.contains(q.getCategory())).collect(Collectors.toList());
+        if (eligible.isEmpty()) {
+            broadcastGameMessage("No questions available for enabled categories. Ending session.");
+            onSessionEnd();
+            return;
+        }
+        int randomIndex = new Random().nextInt(eligible.size());
+        currentQuestion = eligible.get(randomIndex);
+        questions.remove(currentQuestion);
         phase = Phase.IN_PROGRESS; // toggle from READY or EVALUATION
         broadcastCurrentPhase();
         for (ServerThread player : getActivePlayers()) {
@@ -165,25 +179,26 @@ public class GameServer extends BaseGameServer {
         resetRoundTimer();
         broadcastGameMessage("Round ended.");
         broadcastCorrectAnswer(currentQuestion.getCorrectAnswer());
-
+        
+        List<ServerThread> snapshot = new ArrayList<>(getActivePlayers());
+        for (ServerThread player : snapshot) {
+            boolean answeredCorrectly = correctResponders.contains(player);
+            broadcastGameMessage(player.getDisplayName() + (answeredCorrectly ? " locked in the correct answer." : " locked in the wrong answer."));
+        }
         int numCorrect = correctResponders.size();
         for (int i = 0; i < numCorrect; i++) {
             ServerThread player = correctResponders.get(i);
             int pointsAwarded = Math.max(1, 10 - (i * (9 / Math.max(1, numCorrect - 1))));
             player.setPoints(player.getPoints() + pointsAwarded);
             broadcastPlayerPoints(player);
-            broadcastGameMessage(String.format("%s answered correctly and was awarded %s points", player.getDisplayName(), pointsAwarded));
+            broadcastGameMessage(String.format("%s got %d points!", 
+            player.getDisplayName(), pointsAwarded));
         }
-        getActivePlayers().stream()
-            .sorted((p1, p2) -> Integer.compare(p2.getPoints(), p1.getPoints()))
-            .forEach(player -> broadcastGameMessage(
-                    String.format("%s: %d points", player.getDisplayName(), player.getPoints())));
-
         LoggerUtil.INSTANCE.info("[GameServer] onRoundEnd() end");
-
-    if (roundNumber >= TOTAL_ROUNDS || questions.isEmpty()) {
+        if (roundNumber >= TOTAL_ROUNDS || questions.isEmpty()) {
             onSessionEnd();
-        } else {
+        }
+        else {
             onRoundStart();
         }
     }
@@ -246,6 +261,7 @@ public class GameServer extends BaseGameServer {
     private void doSessionReset(List<ServerThread> snapshot) {
         LoggerUtil.INSTANCE.info("[GameServer] doSessionReset() start");
         resetEvaluationTimer();
+        creatorClientId = Constants.DEFAULT_CLIENT_ID;
         phase = Phase.INACTIVE;
         // reset player data and sync changes to clients before clearing active players,
         // so that clients have a chance to update any relevant UI (like ready status)
@@ -367,6 +383,46 @@ public class GameServer extends BaseGameServer {
             unicastGameMessage(sender, e.getMessage());
         }
     }
+    public void handleAddQuestion(ServerThread sender, QuestionPayload payload) {
+        try {
+            ValidationUtils.requirePhaseAtMost(phase, Phase.READY);
+            ValidationUtils.requireNotBlank(payload.getQuestionText(), "Question can't be blank");
+            ValidationUtils.requireNotBlank(payload.getCategory(), "Category can't be blank.");
+            ValidationUtils.requireNotBlank(payload.getCorrectAnswer(), "Correct answer can't be blank.");
+            ValidationUtils.requireNonNull(payload.getOptions(), "Options can't be null.");
+            ValidationUtils.requireTrue(payload.getOptions().size() >= 2 && payload.getOptions().size() <= 4,
+                "Must have 2 and 4 options");
+                try (java.io.FileWriter fw = new java.io.FileWriter(QUESTIONS_FILE, true);
+                java.io.BufferedWriter bw = new java.io.BufferedWriter(fw)) {
+                    StringBuilder line = new StringBuilder();
+                    line.append(payload.getCategory().trim()).append("|");
+                    line.append(payload.getQuestionText().trim()).append("|");
+                    List<String> options = payload.getOptions();
+                    for (int i = 0; i < options.size(); i++) {
+                        line.append(options.get(i).trim());
+                        if (i < options.size() - 1) line.append("|");
+                    }
+                    for (int i = options.size(); i < 4; i++) {
+                        line.append("|");
+                    }
+                    line.append("|").append(payload.getCorrectAnswer().trim().toUpperCase());
+                    bw.newLine();
+                    bw.write(line.toString());
+                }
+                loadQuestions();
+                broadcastCategories();
+                unicastGameMessage(sender, "Question added");
+                LoggerUtil.INSTANCE.info("[GameServer] New question by " + sender.getDisplayName());
+            } 
+            catch (ValidationException e) {
+                LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
+                unicastGameMessage(sender, e.getMessage());
+            } 
+            catch (IOException e) {
+                LoggerUtil.INSTANCE.severe("[GameServer] Failed to save question: " + e.getMessage());
+                unicastGameMessage(sender, "Failed to save question.");
+            }
+        }
 
     protected void handleGuess(ServerThread sender, String guess) {
         try {
@@ -418,8 +474,12 @@ public class GameServer extends BaseGameServer {
             ValidationUtils.requireNotAlreadyReady(isActivePlayer(sender));
 
             if (phase == Phase.INACTIVE) {
+                loadQuestions();
+                creatorClientId = sender.getClientId();
                 phase = Phase.READY;
                 broadcastCurrentPhase();
+                broadcastCreator();
+                broadcastCategories();
             }
 
             sender.resetGameState();
@@ -461,6 +521,27 @@ public class GameServer extends BaseGameServer {
         }
     }
 
+    public void handleCategoryToggle(ServerThread sender, String category) {
+    try {
+        ValidationUtils.requireTrue(sender.getClientId() == creatorClientId,
+                "Only the session creator can change category settings.");
+        ValidationUtils.requirePhaseAtMost(phase, Phase.READY);
+        ValidationUtils.requireTrue(availableCategories.contains(category),
+                "Unknown category: " + category);
+        if (enabledCategories.contains(category)) {
+            enabledCategories.remove(category);
+            broadcastGameMessage("Category disabled: " + category);
+        } else {
+            enabledCategories.add(category);
+            broadcastGameMessage("Category enabled: " + category);
+        }
+        broadcastCategories();
+    } catch (ValidationException e) {
+        LoggerUtil.INSTANCE.warning("[GameServer] " + e.getMessage());
+        unicastGameMessage(sender, e.getMessage());
+    }
+}
+
     // end region for handle*() methods called by Server
 
     // start region for helper methods to send data to clients
@@ -490,6 +571,13 @@ public class GameServer extends BaseGameServer {
                 questions.add(new Question(questionText, category, options, correctAnswer));
                 }
                 LoggerUtil.INSTANCE.info("GameServer Loaded " + questions.size() + " questions.");
+                availableCategories.clear();
+                enabledCategories.clear();
+                for (Question q : questions) {
+                    availableCategories.add(q.getCategory());
+                }
+                enabledCategories.addAll(availableCategories);
+                LoggerUtil.INSTANCE.info("[GameServer] Available categories: " + availableCategories);
         }
         catch (IOException e) {
         LoggerUtil.INSTANCE.severe("GameServer Failed to load questions file: " + e.getMessage());
@@ -608,6 +696,29 @@ public class GameServer extends BaseGameServer {
     private void broadcastGameTimer(TimerType timerType, int secondsRemaining) {
         Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendGameTimer(timerType, secondsRemaining));
     }
+
+    private void broadcastCreator() {
+    Server.INSTANCE.sendOrDisconnect(serverThread -> serverThread.sendCreatorStatus(creatorClientId));
+}
+
+private void unicastCreator(ServerThread target) {
+    Server.INSTANCE.unicast(target, serverThread -> serverThread.sendCreatorStatus(creatorClientId));
+}
+
+private void broadcastCategories() {
+    // we'll use a message payload for simplicity, sending as comma-separated
+    String available = String.join(",", availableCategories);
+    String enabled = String.join(",", enabledCategories);
+    Server.INSTANCE.sendOrDisconnect(serverThread -> 
+        serverThread.sendCategorySync(available, enabled));
+}
+
+private void unicastCategories(ServerThread target) {
+    String available = String.join(",", availableCategories);
+    String enabled = String.join(",", enabledCategories);
+    Server.INSTANCE.unicast(target, serverThread -> 
+        serverThread.sendCategorySync(available, enabled));
+}
 
     // end region for helper methods to send data to clients
 }

@@ -45,7 +45,7 @@ public class ClientUI extends JFrame implements IConnectionEvents {
     private final String baseWindowTitle;
 
     public ClientUI() {
-        super("MT85 (change this) Client UI"); // replace with your UCID and remove the "(change this)" part
+        super("si329 Client UI"); // replace with your UCID and remove the "(change this)" part
         baseWindowTitle = getTitle();
         Client.INSTANCE.registerCallback(this);
         Client.INSTANCE.startNetworkOnly();

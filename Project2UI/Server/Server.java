@@ -9,6 +9,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import Project2UI.Common.LoggerUtil;
+import Project2UI.Common.QuestionPayload;
 
 public enum Server {
     INSTANCE; // Singleton instance
@@ -94,6 +95,25 @@ public enum Server {
             LoggerUtil.INSTANCE.severe("Game server handleAnswer failed", e);
         }
     }
+    protected synchronized void handleCategoryToggle(ServerThread sender, String category) {
+        if (!isGameServerActive()) return;
+        try {
+            gameServer.handleCategoryToggle(sender, category);
+        } 
+        catch (Exception e) {
+            LoggerUtil.INSTANCE.severe("Game server handleCategoryToggle failed", e);
+        }
+    }
+    
+    protected synchronized void handleAddQuestion(ServerThread sender, QuestionPayload payload) {
+        if (!isGameServerActive()) return;
+        try {
+            gameServer.handleAddQuestion(sender, payload);
+        } 
+        catch (Exception e) {
+            LoggerUtil.INSTANCE.severe("Game server handleAddQuestion failed", e);
+        }
+    }
 
     protected synchronized void handleGuess(ServerThread sender, String guess) {
         if (!isGameServerActive()) {
@@ -119,6 +139,18 @@ public enum Server {
             LoggerUtil.INSTANCE.severe("Game server handleReady failed", e);
         }
     }
+
+    protected synchronized void handleAwayToggle(ServerThread sender) {
+        if (!isGameServerActive()) {
+            return;
+        }
+        try {
+            gameServer.handleAwayToggle(sender);
+        } catch (Exception e) {
+            LoggerUtil.INSTANCE.severe("Game server handleAwayToggle failed", e);
+        }
+    }
+
 
     /**
      * Called when a client requests to disconnect.

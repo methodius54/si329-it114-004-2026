@@ -28,4 +28,7 @@ public interface IGameFlowEvents extends IGameEvents {
     default void onGameMessageReceived(String message) {
         // intentional no-op; keeps this callback optional for listeners that do not need it
     }
+    default void onCategoriesUpdated() {
+        //this is intentional
+    }
 }

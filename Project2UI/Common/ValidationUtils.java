@@ -144,17 +144,10 @@ public final class ValidationUtils {
 
     public static String requireValidTurnOption(String value, String errorMessage)
             throws InvalidTurnOptionException {
-        String normalized = value == null ? "" : value.trim().toLowerCase();
+        String normalized = value == null ? "" : value.trim().toUpperCase();
 
-        // example validation for example game
-        // requires a number between 1 and 10 (inclusive)
-        try {
-            int guess = Integer.parseInt(normalized);
-            if (guess < 1 || guess > 10) {
-                throw new InvalidTurnOptionException("Please enter a number between 1 and 10.");
-            }
-        } catch (NumberFormatException e) {
-            throw new InvalidTurnOptionException("Please enter a valid number.");
+        if (!normalized.equals("A") && !normalized.equals("B") && !normalized.equals("C") && !normalized.equals("D")) {
+            throw new InvalidTurnOptionException("Please enter a valid answer choice, (A B C or D).");
         }
         return normalized;
     }

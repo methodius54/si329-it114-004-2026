@@ -11,14 +11,18 @@ import java.awt.Font;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 import Project2UI.Client.Client;
 import Project2UI.Client.Interfaces.IConnectionEvents;
@@ -42,9 +46,12 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
     private final JLabel statusLabel = new JLabel("Connect to the server to receive game data.");
     private final JPanel readyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
     private final JButton readyButton = new JButton("Mark Ready");
+    private final JButton addQuestionButton = new JButton("Add Question");
     private final GameEventsView gameEventsView = new GameEventsView();
     private final JPanel phaseContentPanel = new JPanel(new CardLayout());
     private final JPanel evaluationPanel = createCenteredPhasePanel("Evaluating round results...");
+    private final JPanel categoryPanel = new JPanel();
+    private final JPanel categoryCheckboxes = new JPanel();
     private static final String CARD_PLAY = "PLAY";
     private static final String CARD_EVALUATION = "EVALUATION";
 
@@ -75,6 +82,18 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
         });
         readyPanel.add(readyButton);
         status.add(readyPanel);
+        categoryPanel.setLayout(new BoxLayout(categoryPanel, BoxLayout.Y_AXIS));
+        categoryPanel.setBorder(BorderFactory.createTitledBorder("Categories"));
+        categoryCheckboxes.setLayout(new BoxLayout(categoryCheckboxes, BoxLayout.Y_AXIS));
+        categoryPanel.add(categoryCheckboxes);
+        categoryPanel.setVisible(false);
+        status.add(categoryPanel);
+        addQuestionButton.addActionListener(e -> {
+            JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(this);
+            new AddQuestionDialog(parent).setVisible(true);
+        });
+        addQuestionButton.setVisible(false);
+        status.add(addQuestionButton);
 
         //Question section
         JPanel questionPanel = new JPanel();
@@ -179,6 +198,11 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
     public void onCurrentTurnUpdated(long currentTurnClientId, String currentTurnDisplayName) {
         refreshStateOnly();
     }
+    
+    @Override
+    public void onCategoriesUpdated() {
+        SwingUtilities.invokeLater(this::updateCategoryPanel);
+    }
 
     // ---- View refresh helpers ----
 
@@ -191,6 +215,7 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
     private void refreshStatusOnly() {
         updatePhaseVisibility();
         updateReadyControls();
+        updateCategoryPanel();
 
         switch (client.getCurrentGamePhase()) {
             case INACTIVE:
@@ -250,6 +275,30 @@ public class GameView extends JPanel implements IConnectionEvents, IPlayerEvents
                 btn.setEnabled(canAnswer);
             }
         }
+    }
+    
+    private void updateCategoryPanel() {
+        Phase currentPhase = client.getCurrentGamePhase();
+        boolean showCategories = currentPhase == Phase.READY && client.isSessionCreator();
+        categoryPanel.setVisible(showCategories);
+        
+        if (!showCategories) {
+            return;
+        }
+
+        categoryCheckboxes.removeAll();
+        Set<String> available = client.getAvailableCategories();
+        Set<String> enabled = client.getEnabledCategories();
+        
+        for (String category : available) {
+            JCheckBox box = new JCheckBox(category, enabled.contains(category));
+            box.addActionListener(e -> client.sendCategoryToggle(category));
+            categoryCheckboxes.add(box);
+        }
+        
+        categoryCheckboxes.revalidate();
+        categoryCheckboxes.repaint();
+        addQuestionButton.setVisible(currentPhase == Phase.READY);
     }
 
     public void onQuestionReceived(String category, String question, List<String> options) {

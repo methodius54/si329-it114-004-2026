@@ -6,9 +6,12 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.LinkedHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,6 +45,7 @@ import Project2UI.Common.TimerType;
 import Project2UI.Common.User;
 import Project2UI.Common.ValidationUtils;
 import Project2UI.Exceptions.ValidationException;
+import Project2UI.Common.QuestionPayload;
 
 /**
  * Multi-client chat client using ObjectInputStream/ObjectOutputStream.
@@ -72,6 +76,9 @@ public enum Client implements IClientCommands {
     // id
     private volatile Phase currentGamePhase = Phase.INACTIVE;
     private volatile boolean isLocalValidationEnabled = true;
+    private volatile long sessionCreatorId = Constants.DEFAULT_CLIENT_ID;
+    private volatile Set<String> availableCategories = new HashSet<>();
+    private volatile Set<String> enabledCategories = new HashSet<>();
 
     private final List<IClientEvents> uiCallbacks = new CopyOnWriteArrayList<>();
 
@@ -83,6 +90,13 @@ public enum Client implements IClientCommands {
         if (callback != null && !uiCallbacks.contains(callback)) {
             uiCallbacks.add(callback);
         }
+    }
+    public Set<String> getAvailableCategories() {
+        return Collections.unmodifiableSet(availableCategories);
+    }
+
+    public Set<String> getEnabledCategories() {
+        return Collections.unmodifiableSet(enabledCategories);
     }
 
     public void unregisterCallback(IClientEvents callback) {
@@ -133,6 +147,13 @@ public enum Client implements IClientCommands {
         } catch (ValidationException e) {
             return false;
         }
+    }
+    
+    public long getSessionCreatorId() {
+        return sessionCreatorId;
+    }
+    public boolean isSessionCreator() {
+        return myUser.getClientId() == sessionCreatorId;
     }
 
     public synchronized int getReadyPlayerCount() {
@@ -214,8 +235,13 @@ public enum Client implements IClientCommands {
         passToUiCallbacks(IGameTimerEvents.class,
                 callback -> callback.onGameTimerUpdated(timerType, secondsRemaining));
     }
+
     private void emitUiQuestionReceived(String category, String question, List<String> options) {
         passToUiCallbacks(IGameQuestionEvents.class, callback -> callback.onQuestionReceived(category, question, options));
+    }
+
+    private void emitUiCategoriesUpdated() {
+        passToUiCallbacks(IGameFlowEvents.class, IGameFlowEvents::onCategoriesUpdated);
     }
 
     public boolean isConnected() {
@@ -436,6 +462,7 @@ public enum Client implements IClientCommands {
                 return true;
             default:
                 return false;
+            
         }
     }
 
@@ -443,6 +470,8 @@ public enum Client implements IClientCommands {
 
     private void sendAnswer(String answer) throws IOException {
         String validatedTurnAction = answer == null ? "" : answer.trim();
+        System.out.println("[DEBUG] sendAnswer called with: " + validatedTurnAction);
+        System.out.println("[DEBUG] phase=" + currentGamePhase + " ready=" + myUser.isReady() + " turnTaken=" + myUser.isTurnTaken());
         
         if(isLocalValidationEnabled) {
             try {
@@ -462,6 +491,28 @@ public enum Client implements IClientCommands {
         payload.setPayloadType(PayloadType.ANSWER);
         payload.setMessage(validatedTurnAction);
         sendToServer(payload);
+    }
+    public void sendAddQuestion(QuestionPayload payload) {
+        try {
+            sendToServer(payload);
+        } 
+        catch (IOException e) {
+            LoggerUtil.INSTANCE.warning("Failed to send add question: " + e.getMessage());
+            emitUiSystemMessage("Failed to send question.");
+        }
+        }
+    
+    public void sendCategoryToggle(String category) {
+        try {
+            Payload payload = new Payload();
+            payload.setPayloadType(PayloadType.CATEGORY_TOGGLE);
+            payload.setMessage(category);
+            sendToServer(payload);
+        } 
+        catch (IOException e) {
+            LoggerUtil.INSTANCE.warning("Failed to send category toggle: " + e.getMessage());
+            emitUiSystemMessage("Failed to send category toggle.");
+        }
     }
     
     /**
@@ -644,6 +695,13 @@ public enum Client implements IClientCommands {
             case PLAYER_TURN_STATUS:
                 processTurnStatus(payload);
                 break;
+            case SESSION_CREATOR:
+                sessionCreatorId = payload.getClientId();
+                emitUiGamePhaseUpdated();
+                break;
+            case CATEGORY_SYNC:
+                processCategorySync(payload);
+                break;
             default:
                 LoggerUtil.INSTANCE.warning("Received unhandled payload type: " + payload.getPayloadType());
         }
@@ -729,7 +787,7 @@ public enum Client implements IClientCommands {
         }
         user.setTurnTaken(bp.getValue());
         emitUiPlayerStatusUpdated(user);
-        if (isLocalPlayer(user.getClientId())) {
+        if (isLocalPlayer(user.getClientId()) && bp.getValue()) {
             emitUiPlayerTurnCompleted(user.getClientId());
         }
     }
@@ -891,6 +949,28 @@ public enum Client implements IClientCommands {
         emitUiPlayerStatusUpdated(getMyUserSnapshot());
         emitUiPlayersUpdated();
     }
+    
+    private void processCategorySync(Payload payload) {
+        String message = payload.getMessage();
+        if (ValidationUtils.isNullOrBlank(message)) {
+            return;
+        }
+        String[] parts = message.split("\\|");
+        if (parts.length != 2) {
+            return;
+        }
+        availableCategories.clear();
+        enabledCategories.clear();
+        for (String cat : parts[0].split(",")) {
+            if (!cat.isBlank()) availableCategories.add(cat.trim());
+        }
+        for (String cat : parts[1].split(",")) {
+            if (!cat.isBlank()) enabledCategories.add(cat.trim());
+        }
+        emitUiCategoriesUpdated();
+}
+
+
     // End region for process*() methods ===================================
 
     /**
@@ -925,6 +1005,9 @@ public enum Client implements IClientCommands {
         knownUsers.clear();
         myUser.reset();
         currentGamePhase = Phase.INACTIVE;
+        sessionCreatorId = Constants.DEFAULT_CLIENT_ID;
+        availableCategories.clear();
+        enabledCategories.clear();
         try {
             if (out != null) {
                 LoggerUtil.INSTANCE.info("Closing output stream");

@@ -15,6 +15,7 @@ import Project2UI.Common.LoggerUtil;
 import Project2UI.Common.QAPayload;
 import Project2UI.Common.TimerPayload;
 import Project2UI.Common.TimerType;
+import Project2UI.Common.QuestionPayload;
 
 /**
  * Server-side handler for one connected client.
@@ -76,7 +77,15 @@ public class ServerThread extends BaseServerThread {
             case ANSWER:
                 processAnswer(incoming);
                 break;
-            
+            case PLAYER_AWAY_STATUS:
+                processAwayToggle(incoming);
+                break;
+            case CATEGORY_TOGGLE:
+                processCategoryToggle(incoming);
+                break;
+            case ADD_QUESTION:
+                processAddQuestion(incoming);
+                break;
             default:
                 info("Received unsupported payload type: " + incoming.getPayloadType());
         }
@@ -97,6 +106,16 @@ public class ServerThread extends BaseServerThread {
     private void processReady(Payload incoming) {
         info("Processing ready payload");
         Server.INSTANCE.handleReady(this);
+    }
+
+    private void processAwayToggle(Payload incoming) {
+        info("Processing away toggle payload");
+        Server.INSTANCE.handleAwayToggle(this);
+    }
+    
+    private void processCategoryToggle(Payload incoming) {
+        info("Processing category toggle payload");
+        Server.INSTANCE.handleCategoryToggle(this, incoming.getMessage());
     }
 
     private void processDisconnect(Payload incoming) {
@@ -127,6 +146,14 @@ public class ServerThread extends BaseServerThread {
         // TODO: could add validation for client name here (not blank, length limit,
         // profanity filter, etc)
         setClientName(((ConnectionPayload) incoming).getClientName());
+    }
+    private void processAddQuestion(Payload incoming) {
+        info("Processing add question payload");
+        if (!(incoming instanceof QuestionPayload)) {
+            info("Received invalid payload for add question: " + incoming);
+            return;
+        }
+        Server.INSTANCE.handleAddQuestion(this, (QuestionPayload) incoming);
     }
     // End region for process*() methods ===================================
 
@@ -262,6 +289,19 @@ public class ServerThread extends BaseServerThread {
         payload.setClientId(Constants.GAME_CLIENT_ID);
         payload.setMessage(message);
         return sendToClient(payload);
+    }
+
+    protected boolean sendCreatorStatus(long creatorClientId) {
+    Payload payload = new Payload();
+    payload.setPayloadType(PayloadType.SESSION_CREATOR);
+    payload.setClientId(creatorClientId);
+    return sendToClient(payload);
+    }
+    protected boolean sendCategorySync(String available, String enabled) {
+    Payload payload = new Payload();
+    payload.setPayloadType(PayloadType.CATEGORY_SYNC);
+    payload.setMessage(available + "|" + enabled);
+    return sendToClient(payload);
     }
 
     // End region for send*() methods ===================================

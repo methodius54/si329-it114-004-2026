@@ -25,4 +25,8 @@ public enum PayloadType {
     QUESTION, // used to send the question down to the client
     GAME_TIMER_SYNC,
     PLAYER_AWAY_STATUS,
+    SESSION_CREATOR,
+    CATEGORY_SYNC,
+    CATEGORY_TOGGLE,
+    ADD_QUESTION,
 }
