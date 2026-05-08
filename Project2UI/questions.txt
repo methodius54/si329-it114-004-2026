@@ -6,3 +6,5 @@ Military|What is the name of the missile that the M2A2 Bradley carries?|I-TOW|TO
 Military|The M8 Armored Gun System uses what size cannon for its main armament?|105mm|76mm|37mm|122mm|A
 History|During the Korean war, what was the pivotal naval landing that led to the destruction of the PRK's army?|Incheon|Chipyong-ni|Osan|Chosin Reservoir|A
 
+
+US Geography|What is the largest state?|Alaska|Texas|||A

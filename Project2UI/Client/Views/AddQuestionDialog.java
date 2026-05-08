@@ -102,7 +102,6 @@ public class AddQuestionDialog extends JDialog {
         if (!optC.isEmpty()) options.add(optC);
         if (!optD.isEmpty()) options.add(optD);
 
-        // validate correct answer index exists
         int correctIndex = correct.charAt(0) - 'A';
         if (correctIndex >= options.size()) {
             statusLabel.setText("Correct answer option doesn't exist.");
