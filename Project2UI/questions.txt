@@ -8,3 +8,7 @@ History|During the Korean war, what was the pivotal naval landing that led to th
 
 
 US Geography|What is the largest state?|Alaska|Texas|||A
+US Geography|What is the capital of California?|San Francisco|Sacramento|Los Angeles||B
+
+US Geography|What is the capital of New Jersey|Trenton|Paterson|Cliffside Park|North Bergen|A
+History|What year did World War II end?|1945|1991|1931|1978|A
