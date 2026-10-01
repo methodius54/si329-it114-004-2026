@@ -1,0 +1,14 @@
+# Category|Question|OptionA|OptionB|OptionC|OptionD|CorrectAnswer
+Touhou|Which character of the four listed is NOT a protagonist in any of the mainline (eg 11 12 13) touhou games?|Sakuya|Youmu|Reimu|Aya|D
+Touhou|The character Eirin Yagokoro is inspired by what Shinto goddess of knowledge?|Omoikane|Amaterasu|Tenma|Benzaiten|A
+Military|What is a common nickname for the M113 Armored Personnel Carrier?|Tincan|The 13|Gavin|Death-trap|C
+Military|What is the name of the missile that the M2A2 Bradley carries?|I-TOW|TOW-2|TOW|Hellfire|B
+Military|The M8 Armored Gun System uses what size cannon for its main armament?|105mm|76mm|37mm|122mm|A
+History|During the Korean war, what was the pivotal naval landing that led to the destruction of the PRK's army?|Incheon|Chipyong-ni|Osan|Chosin Reservoir|A
+
+
+US Geography|What is the largest state?|Alaska|Texas|||A
+US Geography|What is the capital of California?|San Francisco|Sacramento|Los Angeles||B
+
+US Geography|What is the capital of New Jersey|Trenton|Paterson|Cliffside Park|North Bergen|A
+History|What year did World War II end?|1945|1991|1931|1978|A
